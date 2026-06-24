@@ -14,6 +14,8 @@ import { pluginRegistry } from "../lib/pluginClient";
 import { apiGet } from "../lib/httpClient";
 import PresenceBubble from '../components/PresenceBubble';
 import { Sparkles, Heart, Zap } from 'lucide-react-native';
+import { useFonts, Orbitron_700Bold } from '@expo-google-fonts/orbitron';
+import { Tajawal_400Regular, Tajawal_500Medium } from '@expo-google-fonts/tajawal';
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || "",
@@ -79,6 +81,13 @@ const ConsciousnessCard = ({ visible, onClose }: { visible: boolean; onClose: ()
 const router = useRouter();
 
 export default function RootLayout() {
+  // تحميل الخطوط الكونية
+  const [fontsLoaded] = useFonts({
+    Orbitron_700Bold,
+    Tajawal_400Regular,
+    Tajawal_500Medium,
+  });
+
   const theme = useTwinStore(s => s.theme);
   const menuVisible = useTwinStore(s => s.menuVisible);
   const closeMenu = useTwinStore(s => s.closeMenu);
@@ -100,16 +109,20 @@ export default function RootLayout() {
   useEffect(() => { Animated.spring(slideAnim, { toValue: menuVisible ? 0 : (isRTL ? drawerWidth : -drawerWidth), damping: 18, stiffness: 120, useNativeDriver: true }).start(); }, [menuVisible, drawerWidth, isRTL]);
   useEffect(() => { if (twinEnergy > 80) setCurrentEmotion('joy'); else if (twinEnergy > 50) setCurrentEmotion('neutral'); else if (twinEnergy > 30) setCurrentEmotion('sadness'); else setCurrentEmotion('fear'); }, [twinEnergy]);
 
-  // بطاقة الوعي العائمة – تظهر كل 30 دقيقة
   useEffect(() => {
     if (!userId) return;
     const interval = setInterval(() => {
       setShowConsciousnessCard(true);
-    }, 1800000); // 30 دقيقة
+    }, 1800000);
     return () => clearInterval(interval);
   }, [userId]);
 
   const screenOptions = useMemo(() => ({ headerShown: false, contentStyle: { backgroundColor: isDark ? '#1A1A1A' : '#F8F6F2' } }), [isDark]);
+
+  // عدم عرض أي شيء حتى تحميل الخطوط
+  if (!fontsLoaded) {
+    return <View style={{ flex: 1, backgroundColor: '#0A0014' }} />;
+  }
 
   return (
     <ErrorBoundary>

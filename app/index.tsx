@@ -5,7 +5,7 @@ export default function Index() {
   const { userId } = useTwinStore();
   
   if (userId) {
-    return <Redirect href="/welcome" />;
+    return <Redirect href="/twin-mind" />;
   }
   
   return <Redirect href="/splash" />;
