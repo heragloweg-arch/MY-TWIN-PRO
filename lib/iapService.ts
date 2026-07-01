@@ -1,6 +1,6 @@
 /**
  * iapService.ts – SoulSync MyTwin AI
- * نظام الفوترة المتكامل مع expo-iap@4.2.8 (SDK 52)
+ * نظام الفوترة المتكامل مع expo-iap (SDK 52)
  */
 
 import { Platform } from 'react-native';
@@ -9,9 +9,9 @@ import {
   getAvailablePurchases,
   purchaseUpdatedListener,
   purchaseErrorListener,
+  requestPurchase,
   finishTransaction,
-  emitter,
-  OpenIapEvent,
+  endConnection,
 } from 'expo-iap';
 import { apiPost, apiGet } from './httpClient';
 
@@ -42,29 +42,35 @@ export async function initializeIAP(): Promise<boolean> {
   if (_isInitialized) return true;
 
   try {
-    // مستمع المشتريات الناجحة
+    // fetchProducts يقوم بالتهيئة تلقائياً في معظم إصدارات expo-iap
+    try {
+      await fetchProducts({ skus: ALL_SKUS });
+    } catch (_) {
+      // فشل صامت – قد لا تدعم بعض الإصدارات التهيئة بهذه الطريقة
+    }
+
     _purchaseListener = purchaseUpdatedListener(async (purchase: any) => {
       if (!purchase) return;
-      const token = purchase.purchaseToken || purchase.transactionReceipt;
-      if (!token) return;
       try {
-        await finishTransaction({ purchase, isConsumable: false });
-        console.log('[IAP] ✅ Transaction finished:', purchase.productId);
+        const productId = purchase?.productId || purchase?.transactionId || '';
+        if (productId) {
+          await finishTransaction({ purchase, isConsumable: false });
+        }
+        console.log('[IAP] ✅ Transaction finished:', productId);
       } catch (err) {
         console.warn('[IAP] finishTransaction error:', err);
       }
     });
 
-    // مستمع الأخطاء
     _errorListener = purchaseErrorListener((error: any) => {
-      const code = error?.code || error?.errorCode || '';
-      if (code !== 'E_USER_CANCELLED' && code !== 'USER_CANCELED') {
+      const code = error?.responseCode;
+      if (code !== undefined && code !== 1) {
         console.error('[IAP] Purchase error:', code, error?.message);
       }
     });
 
     _isInitialized = true;
-    console.log('[IAP] ✅ expo-iap@4.2.8 initialized');
+    console.log('[IAP] ✅ expo-iap initialized');
     return true;
   } catch (err) {
     console.error('[IAP] initializeIAP failed:', err);
@@ -79,9 +85,16 @@ export async function loadSubscriptionProducts(): Promise<any[]> {
   if (Platform.OS !== 'android') return [];
   try {
     await ensureInitialized();
-    const products = await fetchProducts({ skus: ALL_SKUS, type: 'subs' });
-    console.log('[IAP] Products loaded:', products?.length ?? 0);
-    return products ?? [];
+    const result = await fetchProducts({ skus: ALL_SKUS });
+    
+    // ✅ دفاعي: fetchProducts قد يعيد { products: [] } أو Product[] مباشرة
+    if (Array.isArray(result)) {
+      return result;
+    }
+    if (result && typeof result === 'object' && Array.isArray((result as any).products)) {
+      return (result as any).products;
+    }
+    return [];
   } catch (err) {
     console.warn('[IAP] loadSubscriptionProducts failed:', err);
     return [];
@@ -108,57 +121,36 @@ export async function purchaseSubscription(
     await ensureInitialized();
     console.log('[IAP] Starting purchase:', productId);
 
-    // فتح نافذة Google Play
-    const purchase = await new Promise<any>((resolve, reject) => {
-      // مستمع مؤقت للشراء الحالي
-      const listener = purchaseUpdatedListener((p: any) => {
-        if (p?.productId === productId) {
-          listener.remove();
-          resolve(p);
-        }
-      });
-
-      const errListener = purchaseErrorListener((err: any) => {
-        errListener.remove();
-        listener.remove();
-        reject(err);
-      });
-
-      // طلب الشراء عبر Native Module
+    // ✅ دفاعي: requestPurchase قد يقبل { productId } أو { sku } أو string
+    let purchase: any;
+    try {
+      purchase = await requestPurchase({ productId } as any);
+    } catch {
       try {
-        const { getNativeModule } = require('expo-iap');
-        const native = getNativeModule();
-        native?.requestSubscription?.({ sku: productId })
-          ?? native?.buySubscription?.({ sku: productId });
-      } catch (e) {
-        errListener.remove();
-        listener.remove();
-        reject(e);
+        purchase = await requestPurchase(productId as any);
+      } catch {
+        purchase = await (requestPurchase as any)({ sku: productId });
       }
-
-      // timeout 5 دقائق
-      setTimeout(() => {
-        listener.remove();
-        errListener.remove();
-        reject(new Error('TIMEOUT'));
-      }, 300000);
-    });
+    }
 
     if (!purchase) {
       return { success: false, message: 'No purchase returned' };
     }
 
-    const token = purchase.purchaseToken || purchase.transactionReceipt;
+    const token = (purchase as any).transactionId || 
+                  (purchase as any).purchaseToken || 
+                  (purchase as any).transactionReceipt || '';
+
     if (!token) {
       return { success: false, message: 'No purchase token' };
     }
 
-    // التحقق عبر الخادم
     const result = await verifyWithServer(productId, token);
     if (result.success) {
       updateLocalTier(tier);
       try {
-        await finishTransaction({ purchase, isConsumable: false });
+        const purchaseToFinish = Array.isArray(purchase) ? purchase[0] : purchase;
+        await finishTransaction({ purchase: purchaseToFinish, isConsumable: false });
       } catch (_) {}
       return { success: true, tier: result.tier };
     }
@@ -166,16 +158,9 @@ export async function purchaseSubscription(
     return { success: false, message: result.message ?? 'Verification failed' };
 
   } catch (err: any) {
-    const code = err?.code || err?.errorCode || err?.message || '';
-    if (
-      code.includes('USER_CANCELLED') ||
-      code.includes('USER_CANCELED')  ||
-      code === 'E_USER_CANCELLED'
-    ) {
+    const code = err?.responseCode;
+    if (code === 1) {
       return { success: false, message: 'cancelled' };
-    }
-    if (code === 'TIMEOUT') {
-      return { success: false, message: 'timeout' };
     }
     console.error('[IAP] purchaseSubscription error:', err);
     return { success: false, message: err?.message ?? 'Purchase failed' };
@@ -204,13 +189,12 @@ export async function restorePurchases(
     let count = 0;
 
     for (const purchase of purchases) {
-      const token = (purchase as any).purchaseToken
-        || (purchase as any).transactionReceipt;
-      if (!token) continue;
+      const token = (purchase as any).transactionId || 
+                    (purchase as any).purchaseToken || 
+                    (purchase as any).transactionReceipt || '';
+      const productId = (purchase as any).productId || (purchase as any).transactionId || '';
 
-      const productId = (purchase as any).productId
-        || (purchase as any).transactionId;
-      if (!productId) continue;
+      if (!token || !productId) continue;
 
       const tier = Object.keys(PRODUCT_IDS).find(
         k => PRODUCT_IDS[k] === productId
@@ -222,7 +206,7 @@ export async function restorePurchases(
         restoredTier = result.tier ?? tier;
         count++;
         try {
-          await finishTransaction({ purchase: purchase as any, isConsumable: false });
+          await finishTransaction({ purchase, isConsumable: false });
         } catch (_) {}
       }
     }
@@ -270,6 +254,7 @@ export async function disconnectIAP(): Promise<void> {
     _purchaseListener = null;
     _errorListener   = null;
     _isInitialized   = false;
+    await endConnection();
     console.log('[IAP] Disconnected');
   } catch (err) {
     console.warn('[IAP] disconnectIAP error:', err);
