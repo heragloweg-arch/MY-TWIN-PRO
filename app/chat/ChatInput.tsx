@@ -30,7 +30,7 @@ const FEATURE_ROUTES: Record<string, string> = {
 };
 
 export const ChatInput = memo(({
-  input, setInput, loading, isRTL, isDark, colors, lang,
+  input, setInput, loading, isRTL, isDark, colors, lang, onFeatureSelect,
   onSend, onAddTool, activeTools, onRemoveTool,
   onCamera, onGallery, onFile,
   showAttach, setShowAttach, attachAnim,

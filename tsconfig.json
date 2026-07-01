@@ -28,7 +28,13 @@
     "strictNullChecks": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "types": [
+      "jest",
+      "node",
+      "react",
+      "react-native"
+    ]
   },
   "include": [
     "**/*.ts",

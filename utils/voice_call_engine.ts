@@ -47,8 +47,8 @@ export async function startVoiceCall(
         isMeteringEnabled: true,
         android: {
           extension: '.wav',
-          outputFormat: Audio.AndroidOutputFormat.PCM_16_BIT,
-          audioEncoder: Audio.AndroidAudioEncoder.PCM,
+          outputFormat: Audio.AndroidOutputFormat.DEFAULT,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
           sampleRate: 16000,
           numberOfChannels: 1,
           bitRate: 256000,

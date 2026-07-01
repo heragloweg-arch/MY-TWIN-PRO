@@ -12,9 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#0A0014"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.soulsync.mytwin",
@@ -26,9 +24,7 @@
         "NSLocationWhenInUseUsageDescription": "يستخدم الموقع لتحسين تجربة التوأم.",
         "ITSAppUsesNonExemptEncryption": false,
         "SKAdNetworkItems": [
-          {
-            "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork"
-          }
+          { "SKAdNetworkIdentifier": "cstr6suwn9.skadnetwork" }
         ],
         "GADApplicationIdentifier": "ca-app-pub-3940256099942544~1458002511"
       }
@@ -74,6 +70,7 @@
       "expo-router",
       "expo-font",
       "react-native-google-mobile-ads",
+      "expo-iap",
       [
         "expo-build-properties",
         {
@@ -98,35 +95,22 @@
       ],
       [
         "onesignal-expo-plugin",
-        {
-          "mode": "development"
-        }
+        { "mode": "development" }
       ],
-      "./plugins/withGooglePlayBilling",
       "./plugins/withAPIFix"
     ],
     "extra": {
-      "router": {
-        "origin": false
-      },
-      "eas": {
-        "projectId": "b3a5e167-a18c-4ed5-b929-5e84f8356bce"
-      },
-      "cli": {
-        "appVersionSource": "local"
-      },
+      "router": { "origin": false },
+      "eas": { "projectId": "b3a5e167-a18c-4ed5-b929-5e84f8356bce" },
+      "cli": { "appVersionSource": "local" },
       "GOOGLE_ADMOB_APP_ID_ANDROID": "ca-app-pub-3940256099942544~3347511713",
       "GOOGLE_ADMOB_APP_ID_IOS": "ca-app-pub-3940256099942544~1458002511",
       "REWARDED_AD_UNIT_ID_ANDROID": "ca-app-pub-3940256099942544/5224354917",
       "REWARDED_AD_UNIT_ID_IOS": "ca-app-pub-3940256099942544/1712485313",
       "API_BASE_URL": "https://my-twin-pro-production-b744.up.railway.app"
     },
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/b5e2baa3-6015-40a5-9f31-115298d3b0c9"
-    },
+    "runtimeVersion": { "policy": "sdkVersion" },
+    "updates": { "url": "https://u.expo.dev/b5e2baa3-6015-40a5-9f31-115298d3b0c9" },
     "owner": "soulsync.9",
     "sdkVersion": "52.0.0",
     "jsEngine": "hermes"

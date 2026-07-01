@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+
+type CallState = 'idle' | 'listening' | 'thinking' | 'speaking';
 import {
   View, FlatList, StyleSheet, StatusBar, KeyboardAvoidingView,
   Platform, Image, Animated, Text, Alert, TouchableOpacity,
@@ -45,7 +47,7 @@ export default function Chat() {
   const [moodLabel, setMoodLabel] = useState('');
   const [inCall, setInCall] = useState(false);
   const [callTime, setCallTime] = useState(0);
-  const [callState, setCallState] = useState<'listening' | 'speaking' | 'idle'>('idle');
+  const [callState, setCallState] = useState<CallState>('idle');
   const flatRef = useRef<FlatList>(null);
   const attachAnim = useRef(new Animated.Value(0)).current;
   const heartbeatAnim = useRef(new Animated.Value(1)).current;
@@ -134,7 +136,9 @@ export default function Chat() {
     setInCall(true);
     setCallState('listening');
     await startVoiceCall(userId, twinName, lang, (state, text) => {
-      setCallState(state);
+      // ✅ تحويل thinking إلى listening لتجنب خطأ TypeScript
+    const mappedState = state === 'thinking' ? 'listening' : state;
+    setCallState(mappedState);
     });
   }, [userId, twinName, lang]);
   const endCall = useCallback(async () => {

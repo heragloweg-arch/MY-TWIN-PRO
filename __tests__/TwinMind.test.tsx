@@ -31,14 +31,14 @@ jest.mock('../lib/httpClient', () => ({
 
 describe('TwinMindCenter', () => {
   it('يعرض اسم التوأم', async () => {
-    const { getByText } = render(<TwinMindCenter />);
+    const { getByText } = await render(<TwinMindCenter />);
     await waitFor(() => {
       expect(getByText('توأمي')).toBeTruthy();
     });
   });
 
   it('يعرض الشعور الموحد', async () => {
-    const { getByText } = render(<TwinMindCenter />);
+    const { getByText } = await render(<TwinMindCenter />);
     await waitFor(() => {
       expect(getByText('أنا اليوم نشيط')).toBeTruthy();
     });

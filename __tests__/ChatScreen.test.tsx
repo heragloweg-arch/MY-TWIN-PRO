@@ -37,8 +37,8 @@ jest.mock('../../lib/httpClient', () => ({
 }));
 
 describe('Chat Screen', () => {
-  it('يعرض شاشة المحادثة بدون انهيار', () => {
-    const { getByText } = render(<Chat />);
+  it('يعرض شاشة المحادثة بدون انهيار', async () => {
+    const { getByText } = await render(<Chat />);
     expect(getByText('توأمي')).toBeTruthy();
   });
 });
