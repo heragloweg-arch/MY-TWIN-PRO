@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiPost, apiGet } from '../lib/httpClient';
 import { useEnergyStore } from './useEnergyStore';
+import { apiPost, apiGet } from '../lib/httpClient';
 
 export interface ChatMessage {
   id: string;
@@ -57,7 +57,6 @@ export interface TwinStore {
   menuVisible: boolean;
   points: number;
   badges: string[];
-
   isOnline: boolean;
   lastSyncTimestamp: string | null;
   conversationStreak: number;
@@ -88,18 +87,15 @@ export interface TwinStore {
   setTwinEnergy: (val: number) => void;
   updateBond: (val: number) => void;
   getEnergyPercent: () => number;
-
   setOnline: (online: boolean) => void;
   setConversationStreak: (streak: number) => void;
   incrementUsedMemory: () => void;
   setAwarenessData: (score: number, sent: number, limit: number) => void;
   syncWithServer: () => Promise<void>;
   resetToDefaults: () => void;
-
   loadProjectContext: (project: any) => void;
   clearProjectContext: () => void;
   setSuggestedCapability: (cap: { type: string; route: string; label_ar: string; label_en: string } | null) => void;
-
   getUserStats: () => Promise<void>;
   getRecommendations: () => Promise<void>;
   getMemories: (limit?: number) => Promise<void>;
@@ -184,6 +180,14 @@ const initialState = {
 
 const generateId = () => 'msg_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 9);
 
+const safeEnergyStore = () => {
+  try {
+    return useEnergyStore.getState();
+  } catch (e) {
+    return null;
+  }
+};
+
 export const useTwinStore = create<TwinStore>()(
   persist(
     (set, get) => ({
@@ -191,12 +195,13 @@ export const useTwinStore = create<TwinStore>()(
 
       setAuth: (userId) => {
         set({ userId });
-        const tier = get().tier;
-        useEnergyStore.getState().setTier(tier);
+        const energy = safeEnergyStore();
+        if (energy) energy.setTier(get().tier);
       },
       setTier: (tier) => {
         set({ tier });
-        useEnergyStore.getState().setTier(tier);
+        const energy = safeEnergyStore();
+        if (energy) energy.setTier(tier);
       },
       setLang: (lang) => set({ lang }),
       toggleTheme: () => set((s) => ({ theme: s.theme === 'dark' ? 'light' : 'dark' })),
@@ -249,10 +254,9 @@ export const useTwinStore = create<TwinStore>()(
 
       sendMessage: async (message: string) => {
         const state = get();
-        
-        const energyStore = useEnergyStore.getState();
-        if (!energyStore.consumeEnergy(1)) {
-          return { success: false, error: 'out_of_energy' };
+        const energy = safeEnergyStore();
+        if (!energy || !energy.consumeEnergy(1)) {
+          return { success: false, error: energy ? 'out_of_energy' : 'store_error' };
         }
 
         set({ isThinking: true, thinkingStage: 'thinking' });
@@ -280,7 +284,6 @@ export const useTwinStore = create<TwinStore>()(
           } else {
             set({ suggestedCapability: null });
           }
-
           set((s) => ({ usedMemoryCount: s.usedMemoryCount + 1 }));
           return { success: true };
         } catch (error) {
@@ -303,73 +306,30 @@ export const useTwinStore = create<TwinStore>()(
         const { lang } = get();
         const isAr = lang === 'ar';
         let contextMsg = '';
-        
         if (project.type === 'code_lab') {
-          contextMsg = isAr
-            ? `📁 سياق المشروع: ${project.title}\n📝 الكود:\n\`\`\`\n${project.data?.code || ''}\n\`\`\`\n💡 هذا مشروع برمجي. يمكنني مناقشته معك.`
-            : `📁 Project context: ${project.title}\n📝 Code:\n\`\`\`\n${project.data?.code || ''}\n\`\`\`\n💡 This is a coding project. I can discuss it with you.`;
+          contextMsg = isAr ? `📁 سياق المشروع: ${project.title}\n📝 الكود:\n\`\`\`\n${project.data?.code || ''}\n\`\`\`\n💡 هذا مشروع برمجي.` : `📁 Project: ${project.title}\n📝 Code:\n\`\`\`\n${project.data?.code || ''}\n\`\`\``;
         } else if (project.type === 'business') {
-          contextMsg = isAr
-            ? `📁 سياق المشروع: ${project.title}\n📊 التحليل:\n${project.preview}\n💡 هذا تحليل أعمال. يمكنني مناقشته معك.`
-            : `📁 Project context: ${project.title}\n📊 Analysis:\n${project.preview}\n💡 This is a business analysis. I can discuss it with you.`;
+          contextMsg = isAr ? `📁 سياق: ${project.title}\n📊 ${project.preview}` : `📁 ${project.title}\n📊 ${project.preview}`;
         } else if (project.type === 'content') {
-          contextMsg = isAr
-            ? `📁 سياق المشروع: ${project.title}\n✍️ المحتوى:\n${project.preview}\n💡 هذا محتوى مكتوب. يمكنني مناقشته معك.`
-            : `📁 Project context: ${project.title}\n✍️ Content:\n${project.preview}\n💡 This is written content. I can discuss it with you.`;
+          contextMsg = isAr ? `📁 ${project.title}\n✍️ ${project.preview}` : `📁 ${project.title}\n✍️ ${project.preview}`;
         } else if (project.type === 'dream') {
-          contextMsg = isAr
-            ? `📁 سياق الحلم: ${project.title}\n🌙 الحلم:\n${project.data?.dream_text || ''}\n🔮 التفسير:\n${project.data?.interpretation?.substring(0, 300) || ''}\n💡 هذا حلم تم تفسيره. يمكنني مناقشته معك.`
-            : `📁 Dream context: ${project.title}\n🌙 Dream:\n${project.data?.dream_text || ''}\n🔮 Interpretation:\n${project.data?.interpretation?.substring(0, 300) || ''}\n💡 This is an interpreted dream. I can discuss it with you.`;
+          contextMsg = isAr ? `📁 ${project.title}\n🌙 ${project.data?.dream_text || ''}\n🔮 ${project.data?.interpretation?.substring(0, 300) || ''}` : `📁 ${project.title}\n🌙 ${project.data?.dream_text || ''}\n🔮 ${project.data?.interpretation?.substring(0, 300) || ''}`;
         } else if (project.type === 'study') {
-          contextMsg = isAr
-            ? `📁 سياق الجلسة الدراسية: ${project.title}\n📚 المفهوم:\n${project.data?.concept || project.preview}\n💡 هذه جلسة دراسية. يمكنني مناقشتها معك.`
-            : `📁 Study session context: ${project.title}\n📚 Concept:\n${project.data?.concept || project.preview}\n💡 This is a study session. I can discuss it with you.`;
-        } else if (project.type === 'life_coach') {
-          contextMsg = isAr
-            ? `📁 سياق التدريب: ${project.title}\n💪 التفاصيل:\n${project.preview}\n💡 هذه جلسة تدريب حياة. يمكنني مناقشتها معك.`
-            : `📁 Coaching context: ${project.title}\n💪 Details:\n${project.preview}\n💡 This is a life coaching session. I can discuss it with you.`;
-        } else if (project.type === 'task') {
-          contextMsg = isAr
-            ? `📁 سياق المهمة: ${project.title}\n✅ التفاصيل:\n${project.preview}\n💡 هذه مهمة. يمكنني مناقشتها معك.`
-            : `📁 Task context: ${project.title}\n✅ Details:\n${project.preview}\n💡 This is a task. I can discuss it with you.`;
+          contextMsg = isAr ? `📁 ${project.title}\n📚 ${project.data?.concept || project.preview}` : `📁 ${project.title}\n📚 ${project.data?.concept || project.preview}`;
         } else {
-          contextMsg = isAr
-            ? `📁 سياق المشروع: ${project.title}\n💡 يمكنك مناقشة هذا المشروع معي.`
-            : `📁 Project context: ${project.title}\n💡 You can discuss this project with me.`;
+          contextMsg = isAr ? `📁 ${project.title}` : `📁 ${project.title}`;
         }
-
-        const userMsgId = generateId();
-        const systemMsgId = generateId();
-        
-        // بناء رسالة المستخدم
-        let userMsg = '';
-        if (isAr) {
-          userMsg = `لقد انتهيت من ${project.type === 'code_lab' ? 'مختبر البرمجة' : project.type === 'business' ? 'تحليل الأعمال' : project.type === 'content' ? 'مُحترف الكتابة' : project.type === 'dream' ? 'تفسير الأحلام' : project.type === 'study' ? 'جلسة الدراسة' : project.type === 'life_coach' ? 'جلسة التدريب' : project.type === 'task' ? 'المهمة' : 'المشروع'}: "${project.title}". أريد مناقشته معك.`;
-        } else {
-          userMsg = `I've finished the ${project.type === 'code_lab' ? 'Code Lab' : project.type === 'business' ? 'Business Analysis' : project.type === 'content' ? 'Writing Project' : project.type === 'dream' ? 'Dream Interpretation' : project.type === 'study' ? 'Study Session' : project.type === 'life_coach' ? 'Coaching Session' : project.type === 'task' ? 'Task' : 'Project'}: "${project.title}". Let's discuss it.`;
-        }
-
+        const userMsg = isAr ? `أريد مناقشة "${project.title}"` : `Let's discuss "${project.title}"`;
         set({
           activeProjectContext: project,
           chatHistory: [
-            {
-              id: systemMsgId,
-              role: 'system',
-              content: contextMsg,
-              timestamp: Date.now(),
-            },
-            {
-              id: userMsgId,
-              role: 'user',
-              content: userMsg,
-              timestamp: Date.now() + 1,
-            },
+            { id: generateId(), role: 'system', content: contextMsg, timestamp: Date.now() },
+            { id: generateId(), role: 'user', content: userMsg, timestamp: Date.now() + 1 },
           ],
         });
       },
 
       clearProjectContext: () => set({ activeProjectContext: null }),
-      
       setSuggestedCapability: (cap) => set({ suggestedCapability: cap }),
 
       getUserStats: async () => { try { const res = await apiGet(`/api/stats/dashboard?user_id=${get().userId}`); set({ userStats: res, isOnline: true, lastSyncTimestamp: new Date().toISOString() }); } catch (e) { set({ isOnline: false }); } },
@@ -379,48 +339,129 @@ export const useTwinStore = create<TwinStore>()(
       getWeeklyReport: async () => { try { await apiGet(`/api/reports/weekly?user_id=${get().userId}`); } catch (e) {} },
       getRelationshipHealth: async () => { try { await apiGet(`/api/relationship/health?user_id=${get().userId}`); } catch (e) {} },
 
-      generateBusinessIdea: async (budget, interests, location) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/business/generate-idea', { user_id: get().userId, budget, interests, location, lang: get().lang }); },
-      analyzeMarket: async (query) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/business/market-research', { user_id: get().userId, query, lang: get().lang }); },
-      generateFeasibility: async (idea, budget) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/business/feasibility', { user_id: get().userId, idea, budget, lang: get().lang }); },
-      generateBusinessCanvas: async (idea) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/business/canvas', { user_id: get().userId, idea, lang: get().lang }); },
-      generateMarketingPlan: async (idea, budget) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/business/marketing-plan', { user_id: get().userId, idea, budget, lang: get().lang }); },
+      generateBusinessIdea: async (budget, interests, location) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/business/generate-idea', { user_id: get().userId, budget, interests, location, lang: get().lang });
+      },
+      analyzeMarket: async (query) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/business/market-research', { user_id: get().userId, query, lang: get().lang });
+      },
+      generateFeasibility: async (idea, budget) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/business/feasibility', { user_id: get().userId, idea, budget, lang: get().lang });
+      },
+      generateBusinessCanvas: async (idea) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/business/canvas', { user_id: get().userId, idea, lang: get().lang });
+      },
+      generateMarketingPlan: async (idea, budget) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/business/marketing-plan', { user_id: get().userId, idea, budget, lang: get().lang });
+      },
 
-      startStudySession: async (concept) => { useEnergyStore.getState().consumeEnergy(1); const result = await apiPost('/api/study/start', { user_id: get().userId, concept, language: get().lang }); set({ activeStudySession: { concept, explanation: result.explanation, depth: 0, accuracy: 0 } }); return result; },
-      getStudyQuestion: async (topic) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/study/question', { user_id: get().userId, topic, lang: get().lang }); },
-      answerStudyQuestion: async (questionId, answer) => { return await apiPost('/api/study/answer', { user_id: get().userId, question_id: questionId, answer, lang: get().lang }); },
-      endStudySession: async () => { await apiPost('/api/study/end', { user_id: get().userId }); set({ activeStudySession: null }); },
+      startStudySession: async (concept) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        const result = await apiPost('/api/study/start', { user_id: get().userId, concept, language: get().lang });
+        set({ activeStudySession: { concept, explanation: result.explanation, depth: 0, accuracy: 0 } });
+        return result;
+      },
+      getStudyQuestion: async (topic) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/study/question', { user_id: get().userId, topic, lang: get().lang });
+      },
+      answerStudyQuestion: async (questionId, answer) => { 
+        return await apiPost('/api/study/answer', { user_id: get().userId, question_id: questionId, answer, lang: get().lang });
+      },
+      endStudySession: async () => { 
+        await apiPost('/api/study/end', { user_id: get().userId });
+        set({ activeStudySession: null });
+      },
 
-      startCoachingSession: async (topic) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/life-coach/start', { user_id: get().userId, topic, lang: get().lang }); },
-      getLifeAdvice: async (topic) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/life-coach/advice', { user_id: get().userId, topic, lang: get().lang }); },
-      getNutritionPlan: async (goal) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/life-coach/nutrition', { user_id: get().userId, goal, lang: get().lang }); },
-      getFitnessPlan: async (goal) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/life-coach/fitness', { user_id: get().userId, goal, lang: get().lang }); },
-      createLifePlan: async (details) => { useEnergyStore.getState().consumeEnergy(1); const result = await apiPost('/api/life-coach/plan', { user_id: get().userId, details, lang: get().lang }); set({ activeLifePlan: result }); return result; },
+      startCoachingSession: async (topic) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/life-coach/start', { user_id: get().userId, topic, lang: get().lang });
+      },
+      getLifeAdvice: async (topic) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/life-coach/advice', { user_id: get().userId, topic, lang: get().lang });
+      },
+      getNutritionPlan: async (goal) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/life-coach/nutrition', { user_id: get().userId, goal, lang: get().lang });
+      },
+      getFitnessPlan: async (goal) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/life-coach/fitness', { user_id: get().userId, goal, lang: get().lang });
+      },
+      createLifePlan: async (details) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        const result = await apiPost('/api/life-coach/plan', { user_id: get().userId, details, lang: get().lang });
+        set({ activeLifePlan: result });
+        return result;
+      },
 
       getDeviceStatus: async () => { return await apiGet(`/api/smart-home/status?user_id=${get().userId}`); },
       sendDeviceCommand: async (device, command) => { return await apiPost('/api/smart-home/command', { user_id: get().userId, device, command }); },
-      smartHomeCommand: async (command) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/smart-home/command', { user_id: get().userId, command }); },
+      smartHomeCommand: async (command) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/smart-home/command', { user_id: get().userId, command });
+      },
 
-      generateImage: async (prompt, style) => { useEnergyStore.getState().consumeEnergy(1); const res = await apiPost('/api/image-lab/generate', { user_id: get().userId, prompt, style }); return res.image_url || ''; },
-      generateContent: async (type, topic) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/content/generate', { user_id: get().userId, type, topic, lang: get().lang }); },
+      generateImage: async (prompt, style) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        const res = await apiPost('/api/image-lab/generate', { user_id: get().userId, prompt, style });
+        return res.image_url || '';
+      },
+      generateContent: async (type, topic) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/content/generate', { user_id: get().userId, type, topic, lang: get().lang });
+      },
 
-      createTask: async (title, dueDate, priority) => { const res = await apiPost('/api/tasks/create', { user_id: get().userId, title, due_date: dueDate, priority }); set((s) => ({ tasks: [...s.tasks, res.task || res] })); return res; },
+      createTask: async (title, dueDate, priority) => { 
+        const res = await apiPost('/api/tasks/create', { user_id: get().userId, title, due_date: dueDate, priority });
+        set((s) => ({ tasks: [...s.tasks, res.task || res] }));
+        return res;
+      },
       listTasks: async () => { try { const res = await apiGet(`/api/tasks?user_id=${get().userId}`); set({ tasks: res.tasks || res || [] }); } catch (e) {} },
-      completeTask: async (taskId) => { const res = await apiPost('/api/tasks/complete', { user_id: get().userId, task_id: taskId }); set((s) => ({ tasks: s.tasks.map((t: any) => t.id === taskId ? { ...t, status: 'completed' } : t) })); return res; },
+      completeTask: async (taskId) => { 
+        const res = await apiPost('/api/tasks/complete', { user_id: get().userId, task_id: taskId });
+        set((s) => ({ tasks: s.tasks.map((t: any) => t.id === taskId ? { ...t, status: 'completed' } : t) }));
+        return res;
+      },
 
-      generateCode: async (prompt, language) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/code-lab/generate', { user_id: get().userId, prompt, language }); },
-      debugCode: async (code, language) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/code-lab/debug', { user_id: get().userId, code, language }); },
+      generateCode: async (prompt, language) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/code-lab/generate', { user_id: get().userId, prompt, language });
+      },
+      debugCode: async (code, language) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/code-lab/debug', { user_id: get().userId, code, language });
+      },
 
-      interpretDream: async (dreamText) => { useEnergyStore.getState().consumeEnergy(1); return await apiPost('/api/dreams/interpret', { user_id: get().userId, dream_text: dreamText, lang: get().lang }); },
+      interpretDream: async (dreamText) => { 
+        safeEnergyStore()?.consumeEnergy(1);
+        return await apiPost('/api/dreams/interpret', { user_id: get().userId, dream_text: dreamText, lang: get().lang });
+      },
 
       clearHistory: () => set({ chatHistory: [], totalMessages: 0 }),
-      logout: () => { set({ ...initialState }); useEnergyStore.getState().resetDaily(); },
+      logout: () => {
+        set({ ...initialState });
+        safeEnergyStore()?.resetDaily();
+      },
       openMenu: () => set({ menuVisible: true }),
       closeMenu: () => set({ menuVisible: false }),
     }),
     {
       name: 'mytwin-store-v4',
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => AsyncStorage),
+      migrate: (persistedState: any, version: number) => {
+        if (version === 2) {
+          return { ...initialState, ...persistedState, activeProjectContext: null };
+        }
+        return initialState;
+      },
       partialize: (state) => ({
         userId: state.userId,
         twinName: state.twinName,
@@ -443,10 +484,9 @@ export const useTwinStore = create<TwinStore>()(
         awarenessScore: state.awarenessScore,
         dailyNotificationsSent: state.dailyNotificationsSent,
         dailyNotificationsLimit: state.dailyNotificationsLimit,
-        activeProjectContext: state.activeProjectContext,
       }),
       onRehydrateStorage: () => (state, error) => {
-        if (error) console.warn('[MyTwin Store] Rehydration failed – starting fresh');
+        if (error) console.warn('[MyTwin Store] Rehydration failed – using fresh state');
       },
     }
   )
