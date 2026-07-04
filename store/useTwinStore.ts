@@ -256,9 +256,15 @@ export const useTwinStore = create<TwinStore>()(
         dailyNotificationsLimit: limit,
       }),
 
-      // ── Menu ────────────────────────────────────────────────
-      openMenu:  () => set({ menuVisible: true }),
-      closeMenu: () => set({ menuVisible: false }),
+      // ── Menu (مربوط بـ AsyncStorage ليتوافق مع MenuBridge) ──
+      openMenu: () => {
+        set({ menuVisible: true });
+        AsyncStorage.setItem('mytwin-menu-visible', 'true').catch(() => {});
+      },
+      closeMenu: () => {
+        set({ menuVisible: false });
+        AsyncStorage.setItem('mytwin-menu-visible', 'false').catch(() => {});
+      },
 
       // ── Energy & Bond ────────────────────────────────────────
       setTwinEnergy:    (val) => set({ twinEnergy: Math.max(0, Math.min(100, Math.round(val))) }),
@@ -289,7 +295,7 @@ export const useTwinStore = create<TwinStore>()(
       setSuggestedCapability:(cap) => set({ suggestedCapability: cap }),
 
       // ================================================================
-      // Chat Actions – الأهم: addMessage + updateMessage + removeMessage
+      // Chat Actions
       // ================================================================
       addMessage: (msg) =>
         set(s => ({
@@ -311,7 +317,6 @@ export const useTwinStore = create<TwinStore>()(
           twinEnergy:    Math.max(0, s.twinEnergy - (msg.role === 'user' ? 2 : 0)),
         })),
 
-      // ✅ تحديث رسالة موجودة (للـ Streaming)
       updateMessage: (id, updates) =>
         set(s => ({
           chatHistory: s.chatHistory.map(m =>
@@ -319,13 +324,11 @@ export const useTwinStore = create<TwinStore>()(
           ),
         })),
 
-      // ✅ حذف رسالة
       removeMessage: (id) =>
         set(s => ({
           chatHistory: s.chatHistory.filter(m => m.id !== id),
         })),
 
-      // ── sendMessage (legacy - للـ store actions القديمة) ────────
       sendMessage: async (message) => {
         const state = get();
         const energy = safeEnergy();
@@ -429,11 +432,9 @@ export const useTwinStore = create<TwinStore>()(
       version: 4,
       storage: createJSONStorage(() => AsyncStorage),
       migrate: (persistedState: any, version: number) => {
-        // كل إصدار قديم يرجع للـ initial state بأمان
         if (version < 4) {
           return {
             ...initialState,
-            // نحتفظ فقط بالبيانات الشخصية
             userId:            persistedState?.userId            || '',
             twinName:          persistedState?.twinName          || 'توأمك',
             twinGender:        persistedState?.twinGender        || 'female',
