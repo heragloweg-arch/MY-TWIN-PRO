@@ -1,37 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { ScrollView, Text } from 'react-native';
 
 export default function Splash() {
   const [results, setResults] = useState<string[]>([]);
 
   useEffect(() => {
-    const tests: [string, () => any][] = [
-      ['useTwinStore',   () => require('../store/useTwinStore')],
-      ['useEnergyStore', () => require('../store/useEnergyStore')],
-      ['ErrorBoundary',  () => require('../components/ErrorBoundary')],
-      ['theme',          () => require('../utils/theme')],
-      ['httpClient',     () => require('../lib/httpClient')],
-      ['auth',           () => require('../lib/auth')],
-      ['tierConfig',     () => require('../lib/tierConfig')],
-      ['voice_engine',   () => require('../utils/voice_engine')],
-      ['notifications',  () => require('../lib/notifications')],
-      ['SideMenu',       () => require('../components/SideMenu')],
-      ['ChatBubbles',    () => require('./chat/ChatBubbles')],
-      ['ChatComponents', () => require('./chat/ChatComponents')],
-      ['ChatInput',      () => require('./chat/ChatInput')],
+    const screens: [string, () => any][] = [
+      ['login',         () => require('./login')],
+      ['twin-mind',     () => require('./twin-mind')],
+      ['chat/index',    () => require('./chat/index')],
+      ['onboarding',    () => require('./onboarding')],
+      ['museum',        () => require('./museum')],
+      ['memories',      () => require('./memories')],
+      ['relationship',  () => require('./relationship')],
+      ['profile',       () => require('./profile')],
+      ['settings',      () => require('./settings')],
+      ['subscription',  () => require('./subscription')],
+      ['features/index',() => require('./features/index')],
     ];
 
     const logs: string[] = [];
-
-    for (const [name, fn] of tests) {
+    for (const [name, fn] of screens) {
       try {
         fn();
         logs.push('✅ ' + name);
       } catch (e: any) {
-        logs.push('❌ ' + name + ': ' + String(e?.message || e).slice(0, 100));
+        logs.push('❌ ' + name + ': ' + String(e?.message || e).slice(0, 120));
       }
     }
-
     setResults(logs);
   }, []);
 
@@ -41,21 +37,18 @@ export default function Splash() {
       contentContainerStyle={{ padding: 20, paddingTop: 60 }}
     >
       <Text style={{ color: '#A78BFA', fontSize: 16, fontWeight: '700', marginBottom: 16 }}>
-        🔍 Diagnostic Mode
+        🔍 Screens Diagnostic
       </Text>
       {results.length === 0 && (
         <Text style={{ color: '#F59E0B', fontSize: 13 }}>جاري الفحص...</Text>
       )}
       {results.map((r, i) => (
-        <Text
-          key={i}
-          style={{
-            color:       r.startsWith('✅') ? '#10B981' : '#EF4444',
-            fontSize:    12,
-            marginBottom:8,
-            lineHeight:  18,
-          }}
-        >
+        <Text key={i} style={{
+          color:        r.startsWith('✅') ? '#10B981' : '#EF4444',
+          fontSize:     12,
+          marginBottom: 8,
+          lineHeight:   18,
+        }}>
           {r}
         </Text>
       ))}
