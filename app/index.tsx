@@ -1,7 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 
-// مكون خفيف للتحميل
 function Fallback() {
   return (
     <View style={styles.container}>
@@ -11,21 +10,17 @@ function Fallback() {
   );
 }
 
-// المكون الرئيسي يتم تحميله بشكل كسول
 const AppEntry = lazy(() => import('../components/AppEntry'));
 
 export default function Index() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // تأخير بسيط لضمان استقرار الشاشة قبل تحميل المكون الثقيل
     const timer = setTimeout(() => setReady(true), 200);
     return () => clearTimeout(timer);
   }, []);
 
-  if (!ready) {
-    return <Fallback />;
-  }
+  if (!ready) return <Fallback />;
 
   return (
     <Suspense fallback={<Fallback />}>
