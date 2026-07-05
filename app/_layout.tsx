@@ -1,22 +1,23 @@
-import React, { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
-  StyleSheet, Animated, View, Pressable,
-  Modal, useWindowDimensions, Text, TouchableOpacity, ActivityIndicator
+  StyleSheet, Animated, View, Text, TouchableOpacity, ActivityIndicator
 } from "react-native";
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useTwinStore } from "../store/useTwinStore";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { apiGet } from '../lib/httpClient';
 
-const SideMenu = lazy(() => import('../components/SideMenu'));
-
 const EMOTION_COLORS: Record<string, string> = {
   joy: '#FFD700', sadness: '#4A90E2', neutral: '#7C3AED', fear: '#9C27B0', love: '#E91E63', anger: '#FF3B30'
 };
 
+/* ============================================================
+   حقل الجسيمات العاطفي
+   ============================================================ */
 const ParticleField = React.memo(({ emotion }: { emotion: string }) => {
   const opacity = useRef(new Animated.Value(0)).current;
   const color = EMOTION_COLORS[emotion] || EMOTION_COLORS.neutral;
@@ -31,6 +32,9 @@ const ParticleField = React.memo(({ emotion }: { emotion: string }) => {
   return <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: color, opacity }]} pointerEvents="none" />;
 });
 
+/* ============================================================
+   بطاقة الوعي الذكية
+   ============================================================ */
 const ConsciousnessCard = React.memo(({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
   const router = useRouter();
   const userId = useTwinStore(s => s.userId);
@@ -57,10 +61,19 @@ const ConsciousnessCard = React.memo(({ visible, onClose }: { visible: boolean; 
   if (!visible || !notification) return null;
 
   return (
-    <Animated.View style={[st.card, { opacity: fadeAnim, transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0,1], outputRange: [50, 0] }) }] }]}>
+    <Animated.View style={[
+      st.card,
+      {
+        opacity: fadeAnim,
+        transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0,1], outputRange: [50, 0] }) }]
+      }
+    ]}>
       <TouchableOpacity style={st.cardInner} activeOpacity={0.8} onPress={() => { router.push('/chat'); onClose(); }}>
         <Sparkles size={18} stroke="#7C3AED" />
-        <View style={{ flex: 1 }}><Text style={st.cardTitle} numberOfLines={1}>{notification.title}</Text><Text style={st.cardBody} numberOfLines={2}>{notification.body}</Text></View>
+        <View style={{ flex: 1 }}>
+          <Text style={st.cardTitle} numberOfLines={1}>{notification.title}</Text>
+          <Text style={st.cardBody} numberOfLines={2}>{notification.body}</Text>
+        </View>
       </TouchableOpacity>
       <TouchableOpacity onPress={onClose} style={st.cardClose} hitSlop={{ top:10, bottom:10, left:10, right:10 }}>
         <Text style={{ color: '#A78BFA', fontWeight: '700', fontSize: 16 }}>✕</Text>
@@ -69,6 +82,9 @@ const ConsciousnessCard = React.memo(({ visible, onClose }: { visible: boolean; 
   );
 });
 
+/* ============================================================
+   المكون الجذري
+   ============================================================ */
 export default function RootLayout() {
   const hasHydrated = useTwinStore(s => s.hasHydrated);
   const theme = useTwinStore(s => s.theme);
@@ -78,12 +94,19 @@ export default function RootLayout() {
   const lang = useTwinStore(s => s.lang);
   const userId = useTwinStore(s => s.userId);
   const isDark = theme === 'dark';
-  const isRTL = lang === 'ar';
-  const { width } = useWindowDimensions();
-  const drawerWidth = width * 0.8;
-  const slideAnim = useRef(new Animated.Value(isRTL ? drawerWidth : -drawerWidth)).current;
   const [currentEmotion, setCurrentEmotion] = useState('neutral');
   const [showConsciousnessCard, setShowConsciousnessCard] = useState(false);
+  const [SideMenuComp, setSideMenuComp] = useState<any>(null);
+
+  // ✅ تحميل SideMenu بأمان بدون import مباشر
+  useEffect(() => {
+    try {
+      const mod = require('../components/SideMenu');
+      setSideMenuComp(() => mod.default || mod);
+    } catch (e) {
+      console.warn('[Layout] SideMenu load failed:', e);
+    }
+  }, []);
 
   useEffect(() => {
     if (twinEnergy > 80) setCurrentEmotion('joy');
@@ -91,13 +114,6 @@ export default function RootLayout() {
     else if (twinEnergy > 30) setCurrentEmotion('sadness');
     else setCurrentEmotion('fear');
   }, [twinEnergy]);
-
-  useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: menuVisible ? 0 : (isRTL ? drawerWidth : -drawerWidth),
-      damping: 18, stiffness: 120, useNativeDriver: true,
-    }).start();
-  }, [menuVisible, drawerWidth, isRTL]);
 
   useEffect(() => {
     if (!userId) return;
@@ -108,12 +124,9 @@ export default function RootLayout() {
 
   const handleCloseCard = useCallback(() => setShowConsciousnessCard(false), []);
   const handleCloseMenu = useCallback(() => {
-    if (typeof closeMenu === 'function') {
-      closeMenu();
-    }
+    if (typeof closeMenu === 'function') closeMenu();
   }, [closeMenu]);
 
-  // 🛡️ حماية: لا تعرض أي شيء حتى يكتمل rehydration
   if (!hasHydrated) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0014' }}>
@@ -124,58 +137,67 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <ParticleField emotion={currentEmotion} />
-      <Stack screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 150 }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="splash" />
-        <Stack.Screen name="twin-mind" />
-        <Stack.Screen name="chat" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="museum" />
-        <Stack.Screen name="memories" />
-        <Stack.Screen name="relationship" />
-        <Stack.Screen name="stories" />
-        <Stack.Screen name="profile" />
-        <Stack.Screen name="settings" />
-        <Stack.Screen name="subscription" />
-        <Stack.Screen name="referral" />
-        <Stack.Screen name="features/index" />
-        <Stack.Screen name="features/study-mode" />
-        <Stack.Screen name="features/code-lab" />
-        <Stack.Screen name="features/business-analyzer" />
-        <Stack.Screen name="features/life-coach" />
-        <Stack.Screen name="features/image-creator" />
-        <Stack.Screen name="features/dreams" />
-        <Stack.Screen name="features/content-creator" />
-        <Stack.Screen name="features/smart-home" />
-        <Stack.Screen name="features/task-manager" />
-      </Stack>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <ParticleField emotion={currentEmotion} />
 
-      {menuVisible && (
-        <Modal visible transparent animationType="none" onRequestClose={handleCloseMenu} statusBarTranslucent>
-          <View style={st.overlay}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={handleCloseMenu} />
-            <Animated.View style={[st.sidebar, { backgroundColor: isDark ? '#1A1A1A' : '#FFFFFF', width: drawerWidth, [isRTL ? 'right' : 'left']: 0, transform: [{ translateX: slideAnim }] }]}>
-              <Suspense fallback={<View style={{flex:1, justifyContent:'center',alignItems:'center'}}><ActivityIndicator color="#7C3AED" /></View>}>
-                <SideMenu onClose={handleCloseMenu} />
-              </Suspense>
-            </Animated.View>
+        {SideMenuComp ? (
+          <SideMenuComp visible={menuVisible} onClose={handleCloseMenu}>
+            <Stack screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 150 }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="splash" />
+              <Stack.Screen name="twin-mind" />
+              <Stack.Screen name="chat" />
+              <Stack.Screen name="login" />
+              <Stack.Screen name="onboarding" />
+              <Stack.Screen name="museum" />
+              <Stack.Screen name="memories" />
+              <Stack.Screen name="relationship" />
+              <Stack.Screen name="stories" />
+              <Stack.Screen name="profile" />
+              <Stack.Screen name="settings" />
+              <Stack.Screen name="subscription" />
+              <Stack.Screen name="referral" />
+              <Stack.Screen name="features/index" />
+              <Stack.Screen name="features/study-mode" />
+              <Stack.Screen name="features/code-lab" />
+              <Stack.Screen name="features/business-analyzer" />
+              <Stack.Screen name="features/life-coach" />
+              <Stack.Screen name="features/image-creator" />
+              <Stack.Screen name="features/dreams" />
+              <Stack.Screen name="features/content-creator" />
+              <Stack.Screen name="features/smart-home" />
+              <Stack.Screen name="features/task-manager" />
+            </Stack>
+          </SideMenuComp>
+        ) : (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDark ? '#0A0014' : '#FAFAF8' }}>
+            <ActivityIndicator size="large" color="#7C3AED" />
           </View>
-        </Modal>
-      )}
+        )}
 
-      <ConsciousnessCard visible={showConsciousnessCard} onClose={handleCloseCard} />
-    </ErrorBoundary>
+        <ConsciousnessCard visible={showConsciousnessCard} onClose={handleCloseCard} />
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
-
 const st = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sidebar: { position: 'absolute', top: 0, bottom: 0, shadowColor: '#000', shadowOffset: { width: 2, height: 0 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 15 },
-  card: { position: 'absolute', bottom: 100, left: 20, right: 20, backgroundColor: '#1A1226', borderRadius: 20, borderWidth: 1, borderColor: '#7C3AED', padding: 16, flexDirection: 'row', alignItems: 'center', zIndex: 10000, elevation: 20 },
+  card: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: '#1A1226',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#7C3AED',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10000,
+    elevation: 20,
+  },
   cardInner: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
   cardTitle: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
   cardBody: { color: '#A78BFA', fontSize: 12, marginTop: 3, lineHeight: 18 },
