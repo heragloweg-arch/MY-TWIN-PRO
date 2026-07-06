@@ -1,7 +1,5 @@
 """
-CHAT ROUTER v4.0 – توجيه ذكي شامل لجميع قدرات التوأم
-=========================================================
-يدعم: Life Coach | Code Lab | Study (ATHENA) | Creator
+CHAT ROUTER v5.0 – توجيه ذكي شامل لجميع قدرات التوأم + Image Lab
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -20,8 +18,9 @@ class ChatRequest(BaseModel):
 
 LIFE_COACH_KEYWORDS = ["مدرب", "حياتي", "مشكلة", "علاقتي", "وظيفتي", "مالي", "نومي", "قلق", "خائف", "حزين"]
 CODE_LAB_KEYWORDS = ["كود", "برمجة", "مشروع", "معمارية", "قاعدة بيانات", "API", "React", "FastAPI"]
-STUDY_KEYWORDS = ["ادرس", "ذاكر", "شرح", "مفهوم", "رياضيات", "فيزياء", "كيمياء", "تاريخ", "جغرافيا", "درس", "study", "explain", "math", "physics"]
-CREATOR_KEYWORDS = ["اكتب", "مقال", "قصة", "رواية", "إعلان", "منشور", "كتاب", "محتوى", "سكريبت", "تدوينة", "كابشن", "تغريدة", "write", "article", "story", "ad", "content", "script", "blog", "caption", "tweet", "نشر", "publish"]
+STUDY_KEYWORDS = ["ادرس", "ذاكر", "شرح", "مفهوم", "رياضيات", "فيزياء", "كيمياء", "تاريخ", "جغرافيا", "درس"]
+CREATOR_KEYWORDS = ["اكتب", "مقال", "قصة", "رواية", "إعلان", "منشور", "كتاب", "محتوى", "سكريبت"]
+IMAGE_KEYWORDS = ["صورة", "ارسم", "توليد", "تصميم", "جرافيك", "بصري", "image", "generate", "draw", "design", "art", "صمم", "أنشئ صورة", "visual"]
 
 @router.post("/chat")
 async def chat(req: ChatRequest):
@@ -29,6 +28,13 @@ async def chat(req: ChatRequest):
         message = req.message.strip()
         if not message:
             raise HTTPException(400, "Message cannot be empty")
+
+        if any(kw in message for kw in IMAGE_KEYWORDS):
+            try:
+                from app.features.image_lab.image_orchestrator import image_lab
+                result = await image_lab.generate(req.user_id, message)
+                return {"reply": f"تم توليد الصورة: {result.get('image_url', '')}", "provider": "image_lab", "image_data": result}
+            except Exception as e: logger.warning(f"Image Lab fallback: {e}")
 
         if any(kw in message for kw in LIFE_COACH_KEYWORDS):
             try:

@@ -66,6 +66,8 @@ class CreatorOrchestrator(BasePlugin):
         project = self.active_projects.get(user_id, {})
         prompt = f"اكتب {part} من {project.get('type', 'محتوى')} '{project.get('title', '')}'. التعليمات: {instructions}. اللغة: {project.get('language', 'ar')}"
         content = await self._call_ai(prompt, user_id)
+        if content:
+            await self.memory.learn_user_style(user_id, content)
         return {"content": content or "خدمة الكتابة غير متاحة"}
 
     async def write_ad_copy(self, user_id: str, product_name: str, product_features: str, target_audience: str = "", platform: str = "instagram", formula: str = "AIDA", language: str = "ar") -> Dict[str, Any]:

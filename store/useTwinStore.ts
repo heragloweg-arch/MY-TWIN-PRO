@@ -25,6 +25,7 @@ export type TwinStyle = 'supportive' | 'coach' | 'wise' | 'fun' | 'calm';
 export type ReplyStyle = 'short' | 'medium' | 'long';
 export type Theme = 'dark' | 'light';
 export type Lang = 'ar' | 'en';
+export type VoicePersonality = 'friend' | 'mentor' | 'romantic' | 'energetic' | 'calm' | 'genz';
 
 export interface TwinStore {
   userId: string;
@@ -39,6 +40,8 @@ export interface TwinStore {
   calmMode: boolean;
   voiceEnabled: boolean;
   voicePersonality: string;
+  voiceSpeed: number;
+  voicePitch: number;
   chatHistory: ChatMessage[];
   totalMessages: number;
   isThinking: boolean;
@@ -78,6 +81,8 @@ export interface TwinStore {
   toggleCalmMode: () => void;
   setVoiceEnabled: (enabled: boolean) => void;
   setVoicePersonality: (personality: string) => void;
+  setVoiceSpeed: (speed: number) => void;
+  setVoicePitch: (pitch: number) => void;
   setTwinName: (name: string) => void;
   setTwinGender: (gender: TwinGender) => void;
   setTwinStyle: (style: TwinStyle) => void;
@@ -154,6 +159,8 @@ const initialState = {
   calmMode: false,
   voiceEnabled: true,
   voicePersonality: 'friend',
+  voiceSpeed: 1.0,
+  voicePitch: 1.0,
   chatHistory: [] as ChatMessage[],
   totalMessages: 0,
   isThinking: false,
@@ -271,7 +278,6 @@ const buildProjectContext = (project: any, lang: Lang): { systemMsg: string; use
   return { systemMsg: contextMsg, userMsg };
 };
 
-
 // ============================================================
 // إنشاء الـ Store
 // ============================================================
@@ -299,6 +305,8 @@ export const useTwinStore = create<TwinStore>()(
       toggleCalmMode: () => set((s) => ({ calmMode: !s.calmMode })),
       setVoiceEnabled: (enabled) => set({ voiceEnabled: enabled }),
       setVoicePersonality: (personality) => set({ voicePersonality: personality }),
+      setVoiceSpeed: (speed) => set({ voiceSpeed: Math.max(0.5, Math.min(2.0, speed)) }),
+      setVoicePitch: (pitch) => set({ voicePitch: Math.max(0.5, Math.min(2.0, pitch)) }),
       setTwinName: (name) => set({ twinName: name }),
       setTwinGender: (gender) => set({ twinGender: gender }),
       setTwinStyle: (style) => set({ twinStyle: style }),
@@ -398,7 +406,7 @@ export const useTwinStore = create<TwinStore>()(
           set((s) => ({
             chatHistory: s.chatHistory.map((m) =>
               m.id === twinMsgId 
-                ? { ...m, content: 'عذراً، حدث خطأ في الاتصال 💜', failed: true, thinkingStage: 'complete' } 
+                ? { ...m, content: 'عذراُ، حدث خطأ في الاتصال 💜', failed: true, thinkingStage: 'complete' } 
                 : m
             ),
             isThinking: false,
@@ -689,12 +697,15 @@ export const useTwinStore = create<TwinStore>()(
         twinGender: state.twinGender,
         twinStyle: state.twinStyle,
         twinTraits: state.twinTraits,
+        replyStyle: state.replyStyle,
         tier: state.tier,
         theme: state.theme,
         lang: state.lang,
         calmMode: state.calmMode,
         voiceEnabled: state.voiceEnabled,
         voicePersonality: state.voicePersonality,
+        voiceSpeed: state.voiceSpeed,
+        voicePitch: state.voicePitch,
         bondLevel: state.bondLevel,
         journeyPhase: state.journeyPhase,
         attachmentStyle: state.attachmentStyle,

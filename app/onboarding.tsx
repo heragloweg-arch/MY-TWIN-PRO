@@ -16,9 +16,6 @@ import { speakResponse } from '../utils/voice_engine';
 const LOGO = require('../assets/logo.png');
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// ============================================================
-// الأسئلة (7 أسئلة)
-// ============================================================
 const QUESTIONS = {
   ar: [
     { id: '1', q: 'عندما تواجه مشكلة كبيرة، كيف تتعامل معها عادةً؟', options: ['أحللها بهدوء', 'أثق بحدسي', 'أطلب المساعدة', 'أتجنبها مؤقتاً'] },
@@ -40,9 +37,6 @@ const QUESTIONS = {
   ],
 };
 
-// ============================================================
-// دوال مساعدة
-// ============================================================
 function extractTraits(text: string, lang: string): [string, string] {
   const kw: Record<string, string> = lang === 'ar' ? {
     'ذكي': 'ذكي', 'عاطفي': 'عاطفي', 'حساس': 'حساس', 'مبدع': 'مبدع', 'تحليلي': 'تحليلي',
@@ -83,7 +77,7 @@ function useTypingText(fullText: string, active: boolean, speed = 28) {
   const [displayed, setDisplayed] = useState('');
   const [done, setDone] = useState(false);
   useEffect(() => {
-    if (!active || !fullText) return;
+    if (!active || !fullText) { setDisplayed(''); setDone(false); return; }
     setDisplayed(''); setDone(false);
     let i = 0;
     const iv = setInterval(() => {
@@ -131,16 +125,17 @@ async function playSound(path: any, maxMs = 4000): Promise<void> {
 }
 
 async function speakWelcomeWithEmotion(text: string): Promise<void> {
-  const parts = text.split('.').filter(p => p.trim());
-  for (let i = 0; i < parts.length; i++) {
-    await speakResponse(parts[i].trim() + '.', { emotion: i === 0 ? 'calm' : i === parts.length - 1 ? 'happy' : 'calm' });
-    await new Promise(r => setTimeout(r, 600));
+  try {
+    const parts = text.split('.').filter(p => p.trim());
+    for (let i = 0; i < parts.length; i++) {
+      await speakResponse(parts[i].trim() + '.', { emotion: i === 0 ? 'calm' : i === parts.length - 1 ? 'happy' : 'calm' });
+      await new Promise(r => setTimeout(r, 600));
+    }
+  } catch (e) {
+    console.warn('Voice welcome failed:', e);
   }
 }
 
-// ============================================================
-// مكونات بصرية
-// ============================================================
 const NeuronNetwork = ({ isDark }: { isDark: boolean }) => {
   const neurons = useRef(Array.from({ length: 8 }).map(() => ({
     x: 20 + Math.random() * 60,
@@ -232,9 +227,6 @@ const cprStyles = StyleSheet.create({
   label: { fontSize: 11, fontWeight: '600', marginTop: 6, textAlign: 'center' }
 });
 
-// ============================================================
-// المكون الرئيسي
-// ============================================================
 export default function Onboarding() {
   const { lang, userId, setTwinName, setTwinGender } = useTwinStore();
   const isAr = lang === 'ar';
@@ -267,9 +259,18 @@ export default function Onboarding() {
   const activeAvatar = newTwinGender === 'female' ? avatarFemale : avatarMale;
   const { displayed: typedWelcome, done: typingDone } = useTypingText(welcomeText, birthReady, 28);
 
-  // ============================================================
-  // Effects
-  // ============================================================
+  const colors = useMemo(() => ({
+    bg: isDark ? '#0A0014' : '#FAFAF8',
+    card: isDark ? '#1A1226' : '#FFFFFF',
+    text: isDark ? '#FFFFFF' : '#1A1226',
+    subtext: isDark ? '#A78BFA' : '#6B5B8A',
+    accent: '#7C3AED',
+    accentLight: '#7C3AED15',
+    accentGlow: '#7C3AED30',
+    border: isDark ? '#2D1B4D' : '#E0D9F5',
+    inputBg: isDark ? '#161122' : '#F8F6F2',
+    success: '#10B981',
+  }), [isDark]);
 
   // 1. توليد الأفاتار في الخلفية بعد الإجابة على 4 أسئلة
   useEffect(() => {
@@ -296,51 +297,39 @@ export default function Onboarding() {
     if (birthReady && welcomeText && !birthTriggered.current) {
       birthTriggered.current = true;
       const go = async () => {
-        try {
-          await speakWelcomeWithEmotion(welcomeText);
-        } catch {}
+        await speakWelcomeWithEmotion(welcomeText);
         setSpeakingDone(true);
       };
       go();
     }
   }, [birthReady, welcomeText]);
 
-  // 4. مرونة لوحة المفاتيح - scroll to end عند فتح لوحة المفاتيح
+  // 4. تنقل احتياطي بعد 18 ثانية حتى لو فشل الصوت أو الكتابة
+  useEffect(() => {
+    if (birthReady) {
+      const timer = setTimeout(() => {
+        if (!autoNavigate) {
+          setAutoNavigate(true);
+          router.replace('/twin-mind');
+        }
+      }, 18000);
+      return () => clearTimeout(timer);
+    }
+  }, [birthReady, autoNavigate]);
+
+  // 5. مرونة لوحة المفاتيح
   useEffect(() => {
     const keyboardDidShow = Keyboard.addListener('keyboardDidShow', () => {
-      setTimeout(() => {
-        scrollRef.current?.scrollToEnd({ animated: true });
-      }, 150);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 150);
     });
     return () => keyboardDidShow.remove();
   }, []);
 
-  // 5. scroll to end عند تغيير step
+  // 6. scroll to end عند تغيير step
   useEffect(() => {
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 200);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 200);
   }, [step]);
 
-  // ============================================================
-  // Colors
-  // ============================================================
-  const colors = useMemo(() => ({
-    bg: isDark ? '#0A0014' : '#FAFAF8',
-    card: isDark ? '#1A1226' : '#FFFFFF',
-    text: isDark ? '#FFFFFF' : '#1A1226',
-    subtext: isDark ? '#A78BFA' : '#6B5B8A',
-    accent: '#7C3AED',
-    accentLight: '#7C3AED15',
-    accentGlow: '#7C3AED30',
-    border: isDark ? '#2D1B4D' : '#E0D9F5',
-    inputBg: isDark ? '#161122' : '#F8F6F2',
-    success: '#10B981',
-  }), [isDark]);
-
-  // ============================================================
-  // Animations
-  // ============================================================
   const animateStep = useCallback(() => {
     Animated.sequence([
       Animated.timing(fadeAnim, { toValue: 0, duration: 120, useNativeDriver: true }),
@@ -363,7 +352,7 @@ export default function Onboarding() {
     goToNextStep();
   }, [animatingStep, loading, goToNextStep]);
 
-  const generateBothAvatars = async (uName: string) => {
+  const generateBothAvatars = useCallback(async (uName: string) => {
     try {
       const result = await apiPost('/api/avatar/generate-avatars', {
         user_id: userId,
@@ -374,9 +363,9 @@ export default function Onboarding() {
       if (result?.female?.image_url) setAvatarFemale(result.female.image_url);
       if (result?.male?.image_url) setAvatarMale(result.male.image_url);
     } catch (e) {
-      // فشل صامت – سيتم استخدام الشعار
+      // فشل صامت
     }
-  };
+  }, [userId, lang]);
 
   const handleBirthConsciousness = async () => {
     if (!userName.trim()) {
@@ -391,7 +380,6 @@ export default function Onboarding() {
       await playSound(require('../assets/start.mp3'), 6000);
     } catch {}
 
-    // ضمان بدء توليد الأفاتار إذا لم يبدأ بعد
     if (!avatarStarted.current) {
       avatarStarted.current = true;
       generateBothAvatars(userName.trim());
@@ -412,7 +400,6 @@ export default function Onboarding() {
       }
       setAnalysis(analysisText);
 
-      // حفظ البيانات في الذاكرة والبروفايل
       await Promise.all([
         apiPost('/api/onboarding/complete', {
           user_id: userId, answers, lang,
@@ -443,10 +430,9 @@ export default function Onboarding() {
       const welcome = isAr
         ? `أهلاً... أنا ${twinFinal}. من إجاباتك، أشعر أنك ${t1} و${t2}. أنا هنا لأتعلم منك. أخبرني، كيف كان يومك؟`
         : `Hi... I'm ${twinFinal}. From your answers, I sense you're ${t1} and ${t2}. I'm here to learn from you. Tell me, how was your day?`;
-      
+
       setWelcomeText(welcome);
       setBirthReady(true);
-      // الصوت يبدأ تلقائياً من useEffect [birthReady, welcomeText]
 
     } catch (e: unknown) {
       Alert.alert(isAr ? 'خطأ' : 'Error', isAr ? 'حدث خطأ غير متوقع' : 'Unexpected error');
@@ -456,14 +442,9 @@ export default function Onboarding() {
   };
 
   const scrollToEnd = useCallback(() => {
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, []);
 
-  // ============================================================
-  // Render Methods
-  // ============================================================
 
   const renderQuestionStep = () => {
     const q = questions[step];
@@ -501,9 +482,7 @@ export default function Onboarding() {
       <View style={st.inputGroup}>
         <View style={st.inputIconRow}>
           <User size={18} stroke={colors.accent} />
-          <Text style={[st.label, { color: colors.subtext }]}>
-            {isAr ? 'ما اسمك؟' : 'Your name?'}
-          </Text>
+          <Text style={[st.label, { color: colors.subtext }]}>{isAr ? 'ما اسمك؟' : 'Your name?'}</Text>
         </View>
         <TextInput
           style={[st.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border, textAlign: isAr ? 'right' : 'left' }]}
@@ -520,9 +499,7 @@ export default function Onboarding() {
       <View style={st.inputGroup}>
         <View style={st.inputIconRow}>
           <Sparkles size={18} stroke={colors.accent} />
-          <Text style={[st.label, { color: colors.subtext }]}>
-            {isAr ? 'اسم توأمك الرقمي' : 'Your digital twin name'}
-          </Text>
+          <Text style={[st.label, { color: colors.subtext }]}>{isAr ? 'اسم توأمك الرقمي' : 'Your digital twin name'}</Text>
         </View>
         <TextInput
           style={[st.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border, textAlign: isAr ? 'right' : 'left' }]}
@@ -535,9 +512,7 @@ export default function Onboarding() {
         />
       </View>
 
-      <Text style={[st.label, { color: colors.subtext, marginTop: 14 }]}>
-        {isAr ? 'صوت وجنس توأمك' : 'Twin voice & gender'}
-      </Text>
+      <Text style={[st.label, { color: colors.subtext, marginTop: 14 }]}>{isAr ? 'صوت وجنس توأمك' : 'Twin voice & gender'}</Text>
       <View style={st.genderRow}>
         {(['female', 'male'] as TwinGender[]).map(g => (
           <TouchableOpacity
@@ -563,9 +538,7 @@ export default function Onboarding() {
       <View style={st.inputGroup}>
         <View style={st.inputIconRow}>
           <MessageCircle size={18} stroke={colors.accent} />
-          <Text style={[st.label, { color: colors.subtext }]}>
-            {isAr ? 'أخبرني عن نفسك (اختياري)' : 'Tell me about yourself (optional)'}
-          </Text>
+          <Text style={[st.label, { color: colors.subtext }]}>{isAr ? 'أخبرني عن نفسك (اختياري)' : 'Tell me about yourself (optional)'}</Text>
         </View>
         <TextInput
           ref={freeInfoRef}
@@ -605,18 +578,13 @@ export default function Onboarding() {
   );
 
   const renderBirthStep = () => (
-    <View style={{ alignItems: 'center' }}>
-      {/* الأفاتار المختار في الأعلى */}
+    <View style={{ alignItems: 'center', width: '100%' }}>
       <Animated.View style={[st.avatarGlow, { backgroundColor: colors.accentGlow, transform: [{ scale: pulseAnim }] }]}>
         <View style={st.avatarBirthWrap}>
           {activeAvatar ? (
-            <Image
-              source={{ uri: activeAvatar }}
-              style={st.avatarBirthImg}
-              onError={() => newTwinGender === 'female' ? setAvatarFemale(null) : setAvatarMale(null)}
-            />
+            <Image source={{ uri: activeAvatar }} style={st.avatarBirthImg} resizeMode="cover" />
           ) : (
-            <Image source={LOGO} style={st.avatarBirthImg} />
+            <Image source={LOGO} style={st.avatarBirthImg} resizeMode="contain" />
           )}
         </View>
       </Animated.View>
@@ -631,9 +599,7 @@ export default function Onboarding() {
       ) : (
         <View style={st.loadingRow}>
           <ActivityIndicator color={colors.accent} />
-          <Text style={[st.loadingText, { color: colors.subtext }]}>
-            {isAr ? 'جاري تحليل وعيك...' : 'Analyzing your consciousness...'}
-          </Text>
+          <Text style={[st.loadingText, { color: colors.subtext }]}>{isAr ? 'جاري تحليل وعيك...' : 'Analyzing your consciousness...'}</Text>
         </View>
       )}
 
@@ -649,18 +615,14 @@ export default function Onboarding() {
       ) : (
         <View style={st.loadingRow}>
           <ActivityIndicator color={colors.accent} />
-          <Text style={[st.loadingText, { color: colors.subtext }]}>
-            {isAr ? 'التوأم يستيقظ...' : 'Twin awakening...'}
-          </Text>
+          <Text style={[st.loadingText, { color: colors.subtext }]}>{isAr ? 'التوأم يستيقظ...' : 'Twin awakening...'}</Text>
         </View>
       )}
 
       {autoNavigate && (
         <View style={st.navigateRow}>
           <ActivityIndicator color={colors.success} size="small" />
-          <Text style={[st.loadingText, { color: colors.success }]}>
-            {isAr ? 'جارٍ الدخول إلى عالمك...' : 'Entering your world...'}
-          </Text>
+          <Text style={[st.loadingText, { color: colors.success }]}>{isAr ? 'جارٍ الدخول إلى عالمك...' : 'Entering your world...'}</Text>
         </View>
       )}
     </View>
@@ -668,11 +630,7 @@ export default function Onboarding() {
 
   return (
     <SafeAreaView style={[st.safe, { backgroundColor: colors.bg }]}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-      >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={st.scroll}
@@ -695,9 +653,6 @@ export default function Onboarding() {
   );
 }
 
-// ============================================================
-// الأنماط
-// ============================================================
 const st = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: 20, paddingBottom: 40 },
@@ -721,9 +676,9 @@ const st = StyleSheet.create({
   submitText: { color: '#FFF', fontWeight: '700', fontSize: 17 },
   avatarGlow: { width: 144, height: 144, borderRadius: 44, justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
   avatarBirthWrap: { width: 128, height: 128, borderRadius: 38, overflow: 'hidden', justifyContent: 'center', alignItems: 'center', backgroundColor: '#7C3AED20' },
-  avatarBirthImg: { width: 128, height: 128, borderRadius: 38, resizeMode: 'cover' },
+  avatarBirthImg: { width: 128, height: 128, borderRadius: 38 },
   twinNamePreview: { fontSize: 26, fontWeight: '800', marginBottom: 4 },
-  analysisCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 18, borderRadius: 20, borderWidth: 1, marginTop: 8 },
+  analysisCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 18, borderRadius: 20, borderWidth: 1, marginTop: 8, width: '100%' },
   analysisText: { flex: 1, fontSize: 14, lineHeight: 23, textAlign: 'center' },
   welcomeCard: { borderRadius: 22, borderWidth: 1, padding: 20, marginTop: 20, width: '100%' },
   welcomeText: { fontSize: 15, lineHeight: 27, textAlign: 'center', fontWeight: '500' },
