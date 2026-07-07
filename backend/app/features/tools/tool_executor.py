@@ -1,6 +1,11 @@
-"""Tool Executor v4.0 – متوافق مع Unified Tool Registry."""
+"""
+Tool Executor v5.0 – منفذ القدرات مع دعم Pipeline
+=====================================================
+يدعم: تنفيذ قدرة واحدة أو Pipeline كامل.
+يحتفظ بـ Caching و Timeout.
+"""
 import logging, time, asyncio
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
 
 logger = logging.getLogger("tool_executor")
@@ -10,16 +15,23 @@ CACHE_TTL = 300
 
 class ToolExecutor:
     async def execute(self, tool_name: str, message: str, user_id: str, tier: str = "free", user_profile: Optional[Dict] = None) -> Optional[str]:
-        from app.features.tools.tool_registry import ToolRegistry
-        
-        tool_func = ToolRegistry.get_tool(tool_name)
+        """تنفيذ قدرة واحدة"""
+        from app.features.tools.capability_registry import CapabilityRegistry
+
+        tool_func = CapabilityRegistry.get(tool_name)
         if not tool_func:
-            logger.warning(f"Tool not found: {tool_name}")
+            # الرجوع للسجل القديم
+            from app.features.tools.tool_registry import ToolRegistry
+            tool_func = ToolRegistry.get_tool(tool_name)
+        
+        if not tool_func:
+            logger.warning(f"Capability not found: {tool_name}")
             return None
 
         cache_key = f"{user_id}:{tool_name}:{message[:50]}"
         if cache_key in _cache:
             cached = _cache[cache_key]
+            await self._save_to_history(user_id, tool_name, result if isinstance(result, str) else str(result)[:500])
             if datetime.now() - cached["time"] < timedelta(seconds=CACHE_TTL):
                 return cached["result"]
 
@@ -27,13 +39,41 @@ class ToolExecutor:
         try:
             result = await asyncio.wait_for(tool_func(user_id, message), timeout=15.0)
             _cache[cache_key] = {"result": result, "time": datetime.now()}
-            logger.info(f"✅ Tool {tool_name}: {(time.time()-start)*1000:.0f}ms")
+            await self._save_to_history(user_id, tool_name, result if isinstance(result, str) else str(result)[:500])
+            elapsed = (time.time() - start) * 1000
+            CapabilityRegistry.update_health(tool_name, elapsed, True)
+            logger.info(f"✅ {tool_name}: {elapsed:.0f}ms")
             return result
         except asyncio.TimeoutError:
-            logger.warning(f"⏱️ Tool {tool_name} timed out")
+            CapabilityRegistry.update_health(tool_name, 15000, False)
+            logger.warning(f"⏱️ {tool_name} timed out")
             return None
         except Exception as e:
-            logger.error(f"❌ Tool {tool_name} failed: {e}")
+            CapabilityRegistry.update_health(tool_name, 0, False)
+            logger.error(f"❌ {tool_name} failed: {e}")
             return None
 
+    async def execute_pipeline(self, capabilities: List[str], message: str, user_id: str, tier: str = "free") -> List[Dict[str, Any]]:
+        """تنفيذ Pipeline كامل من القدرات"""
+        results = []
+        for cap in capabilities:
+            result = await self.execute(cap, message, user_id, tier)
+            results.append({"capability": cap, "result": result, "success": result is not None})
+        return results
+
+
 tool_executor = ToolExecutor()
+
+    async def _save_to_history(self, user_id: str, tool_name: str, result: str):
+        try:
+            from app.infrastructure.database.supabase_client import get_db
+            db = get_db()
+            if db:
+                db.table("projects").insert({
+                    "title": f"أداة: {tool_name}",
+                    "type": "tool",
+                    "data": {"tool": tool_name, "result": result[:500]},
+                    "created_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+                    "user_id": user_id
+                }).execute()
+        except: pass

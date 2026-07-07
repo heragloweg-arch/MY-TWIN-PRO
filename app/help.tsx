@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { router } from 'expo-router';
 import {
   ArrowLeft, HelpCircle, MessageCircle, Mail, Shield,
@@ -40,7 +40,7 @@ export default function Help() {
   const insets = useSafeAreaInsets();
   const { lang } = useTwinStore();
   const isAr = lang === 'ar';
-  const isDark = useTheme().isDark;
+  const { colors, isDark } = useAppTheme();
   const t = T[lang] || T['ar'];
 
   const colors = {

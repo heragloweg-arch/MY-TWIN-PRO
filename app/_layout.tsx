@@ -6,7 +6,6 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useTwinStore } from "../store/useTwinStore";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import SideMenu from '../components/SideMenu';
-import Header from '../components/Header';
 import { Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { apiGet } from '../lib/httpClient';
@@ -135,7 +134,7 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerShown: true,
-              header: () => <Header />,
+              header: () => ,
               animation: 'fade',
               animationDuration: 150,
               contentStyle: { backgroundColor: isDark ? '#0A0014' : '#FAFAF8' },

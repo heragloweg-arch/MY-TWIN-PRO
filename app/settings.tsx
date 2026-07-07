@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { router, Href } from 'expo-router';
 import { useState, useMemo, useCallback } from 'react';
 import { apiGet, apiPost } from '../lib/httpClient';
@@ -56,7 +56,7 @@ export default function Settings() {
   } = useTwinStore();
   const isAr = lang === 'ar';
   const t = T[lang] || T['ar'];
-  const isDark = useTheme().isDark;
+  const { colors, isDark } = useAppTheme();
 
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);

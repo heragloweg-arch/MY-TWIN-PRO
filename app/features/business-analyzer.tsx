@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../../store/useTwinStore';
 import { useProjectStore } from '../../store/useProjectStore';
-import { useTheme } from '../../utils/theme';
+import { useAppTheme } from '../../engine/colors';
 import { router } from 'expo-router';
 import { apiPost } from '../../lib/httpClient';
 import {
@@ -94,7 +94,7 @@ export default function BusinessAnalyzer() {
   const { lang, userId } = useTwinStore();
   const addProject = useProjectStore((s) => s.addProject);
   const isAr = lang === 'ar';
-  const isDark = useTheme().isDark;
+  const { colors, isDark } = useAppTheme();
   const t = T[lang] || T['ar'];
 
   const [budget, setBudget] = useState('');

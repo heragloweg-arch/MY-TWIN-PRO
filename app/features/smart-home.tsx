@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../../store/useTwinStore';
 import { useProjectStore } from '../../store/useProjectStore';
 import { useEnergyStore } from '../../store/useEnergyStore';
-import { useTheme } from '../../utils/theme';
+import { useAppTheme } from '../../engine/colors';
 import { router } from 'expo-router';
 import { apiPost, apiGet } from '../../lib/httpClient';
 import {
@@ -99,7 +99,7 @@ export default function SmartHome() {
   const addProject = useProjectStore((s) => s.addProject);
   const consumeEnergy = useEnergyStore((s) => s.consumeEnergy);
   const isAr = lang === 'ar';
-  const isDark = useTheme().isDark;
+  const { colors, isDark } = useAppTheme();
   const t = T[lang] || T['ar'];
 
   const [activeTab, setActiveTab] = useState<TabType>('routines');

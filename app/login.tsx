@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTwinStore } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { apiPost } from '../lib/httpClient';
 import { googleLogin } from '../lib/auth';
 import {
@@ -237,7 +237,7 @@ const popupStyles = StyleSheet.create({
 export default function Login() {
   const { setAuth, lang, setLang, hasHydrated } = useTwinStore();
   const isAr = lang === 'ar';
-  const isDark = useTheme().isDark;
+  const { colors, isDark } = useAppTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

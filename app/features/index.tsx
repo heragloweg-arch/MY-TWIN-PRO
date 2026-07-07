@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../../store/useTwinStore';
 import { useEnergyStore } from '../../store/useEnergyStore';
-import { useTheme } from '../../utils/theme';
+import { useAppTheme } from '../../engine/colors';
 import { router, Href } from 'expo-router';
 import {
   ArrowLeft, GraduationCap, Code2, TrendingUp, Heart,
@@ -50,7 +50,7 @@ const FEATURES = [
 
 export default function FeaturesHub() {
   const insets = useSafeAreaInsets();
-  const theme = useTheme();
+  const theme = useAppTheme();
   const { lang } = useTwinStore();
   const { getRemainingMessages, dailyMessageLimit } = useEnergyStore();
   const isAr = lang === 'ar';

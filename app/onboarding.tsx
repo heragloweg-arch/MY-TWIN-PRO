@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTwinStore, TwinGender } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { apiPost } from '../lib/httpClient';
 import { Audio } from 'expo-av';
 import { Sparkles, Fingerprint, Brain, User, MessageCircle } from 'lucide-react-native';
@@ -230,7 +230,7 @@ const cprStyles = StyleSheet.create({
 export default function Onboarding() {
   const { lang, userId, setTwinName, setTwinGender } = useTwinStore();
   const isAr = lang === 'ar';
-  const isDark = useTheme().isDark;
+  const { colors, isDark } = useAppTheme();
   const questions = QUESTIONS[lang as keyof typeof QUESTIONS] ?? QUESTIONS['ar'];
 
   const [step, setStep] = useState(0);

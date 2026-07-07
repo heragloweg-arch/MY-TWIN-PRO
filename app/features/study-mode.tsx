@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../../store/useTwinStore';
-import { useTheme } from '../../utils/theme';
+import { useAppTheme } from '../../engine/colors';
 import { router } from 'expo-router';
 import { apiPost, apiGet } from '../../lib/httpClient';
 import * as ImagePicker from 'expo-image-picker';
@@ -316,7 +316,7 @@ export default function StudyMode() {
   const insets = useSafeAreaInsets();
   const { lang, userId, twinName, hasHydrated } = useTwinStore();
   const isAr = lang === 'ar';
-  const isDark = useTheme().isDark;
+  const { colors, isDark } = useAppTheme();
   const t = T[lang] || T['ar'];
 
   const [concept, setConcept] = useState('');

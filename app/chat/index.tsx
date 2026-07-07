@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { useTwinStore } from '../../store/useTwinStore';
-import { useTheme } from '../../utils/theme';
+import { useAppTheme } from '../../engine/colors';
 import { apiPost, apiGet } from '../../lib/httpClient';
 import { speakResponse, stopSpeaking } from '../../utils/voice_engine';
 import { startVoiceCall, endVoiceCall } from '../../utils/voice_call_engine';
@@ -34,7 +34,7 @@ export default function Chat() {
     lang, twinEnergy, setTwinEnergy, updateBond, bondLevel,
     openMenu, voiceEnabled, setVoiceEnabled,
   } = useTwinStore();
-  const { isDark } = useTheme();
+  const { isDark } = useAppTheme();
   const isRTL = lang === 'ar';
   const isAr  = lang === 'ar';
   const colors = isDark ? COLORS.dark : COLORS.light;

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { router } from 'expo-router';
 import { apiGet } from '../lib/httpClient';
 import {
@@ -53,7 +53,7 @@ const TABS: { id: MemoryTab; label_ar: string; label_en: string; icon: any }[] =
 export default function MemoriesScreen() {
   const insets = useSafeAreaInsets();
   const { lang, getUserStats, userId } = useTwinStore();
-  const theme = useTheme();
+  const theme = useAppTheme();
   const isAr = lang === 'ar';
   const isDark = theme.isDark;
   const t = T[lang] || T['ar'];

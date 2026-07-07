@@ -1,0 +1,18 @@
+export { useTwinState } from './core/TwinState';
+export type { ConsciousnessMode, Emotion, PresenceLevel, AwarenessLevel, TwinState, ThinkingStage } from './core/TwinState';
+export { stateBus, STATE_EVENTS } from './core/StateBus';
+export { stateMachine } from './core/StateMachine';
+export { mindEngine } from './mind/MindEngine';
+export { emotionEngine } from './emotion/EmotionEngine';
+export { relationshipEngine } from './relationship/RelationshipEngine';
+export { memoryEngine } from './memory/MemoryEngine';
+export { behaviorEngine } from './behavior/BehaviorEngine';
+export { voiceEngine } from './voice/VoiceEngine';
+export { voicePersona } from './voice/VoicePersona';
+export { voiceSynthesizer } from './voice/VoiceSynthesizer';
+export { voiceCallManager } from './voice/VoiceCallManager';
+export { cognitiveEngine } from './mind/CognitiveEngine';
+export { useColors, getColors, FONTS, SPACING, useAppTheme } from './colors';
+export type { ThemeColors } from './colors';
+export { useLivingTheme } from './living-theme';
+export type { LivingTheme } from './living-theme';

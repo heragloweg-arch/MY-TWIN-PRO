@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../../store/useTwinStore';
-import { useTheme } from '../../utils/theme';
+import { useAppTheme } from '../../engine/colors';
 import { router } from 'expo-router';
 import { apiPost, apiGet } from '../../lib/httpClient';
 import {
@@ -499,7 +499,7 @@ export default function LifeCoach() {
   const insets = useSafeAreaInsets();
   const { lang, userId, twinName, hasHydrated, bondLevel } = useTwinStore();
   const isAr = lang === 'ar';
-  const theme = useTheme();
+  const theme = useAppTheme();
   const isDark = theme.isDark;
   const t = T[lang] || T['ar'];
 

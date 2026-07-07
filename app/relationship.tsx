@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { router } from 'expo-router';
 import { apiGet, apiPost, apiDelete } from '../lib/httpClient';
 import {
@@ -111,7 +111,7 @@ interface Goal {
 export default function Relationship() {
   const insets = useSafeAreaInsets();
   const { lang, journeyPhase, attachmentStyle } = useTwinStore();
-  const theme = useTheme();
+  const theme = useAppTheme();
   const isAr = lang === 'ar';
   const isDark = theme.isDark;
   const t = T[lang] || T['ar'];

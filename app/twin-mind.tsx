@@ -7,7 +7,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../store/useTwinStore';
 import { useEnergyStore } from '../store/useEnergyStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { router, Href } from 'expo-router';
 import { apiGet } from '../lib/httpClient';
 import { AdModal } from '../components/AdModal';
@@ -454,7 +454,7 @@ export default function TwinMindCenter() {
 
   const { userId, twinName, lang, hasHydrated } = useTwinStore();
   const { getRemainingMessages, dailyMessageLimit } = useEnergyStore();
-  const theme = useTheme();
+  const theme = useAppTheme();
   const isAr = lang === 'ar';
   const isDark = theme.isDark;
 

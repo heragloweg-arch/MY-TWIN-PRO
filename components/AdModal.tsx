@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, ActivityIndicator, Platform } from 'react-native';
 import { useTwinStore } from '../store/useTwinStore';
 import { useEnergyStore } from '../store/useEnergyStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import {
   RewardedAd,
   RewardedAdEventType,
@@ -23,7 +23,7 @@ interface AdModalProps {
 export function AdModal({ visible, onClose }: AdModalProps) {
   const { lang, tier } = useTwinStore();
   const energyStore = useEnergyStore();
-  const theme = useTheme();
+  const theme = useAppTheme();
   const isAr = lang === 'ar';
   const isDark = theme.isDark;
   const t = (ar: string, en: string) => isAr ? ar : en;

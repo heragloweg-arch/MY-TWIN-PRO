@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { router } from 'expo-router';
 import { apiGet, apiDelete } from '../lib/httpClient';
 import {
@@ -37,7 +37,7 @@ export default function History() {
   const insets = useSafeAreaInsets();
   const { lang, userId, hasHydrated } = useTwinStore();
   const isAr = lang === 'ar';
-  const isDark = useTheme().isDark;
+  const { colors, isDark } = useAppTheme();
   const t = useCallback((ar: string, en: string) => (isAr ? ar : en), [isAr]);
 
   const [projects, setProjects] = useState<any[]>([]);

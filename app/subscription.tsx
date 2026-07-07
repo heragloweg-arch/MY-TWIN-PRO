@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useTwinStore } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import {
   Crown, Star, CheckCircle2, ArrowRight, Brain, Zap,
   Sparkles, MessageSquare, Search, Globe, GraduationCap,

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { router } from 'expo-router';
 import { apiGet } from '../lib/httpClient';
 import { ArrowLeft, BookOpen, Heart, TrendingUp, MessageSquare } from 'lucide-react-native';
@@ -10,7 +10,7 @@ import { ArrowLeft, BookOpen, Heart, TrendingUp, MessageSquare } from 'lucide-re
 export default function StoriesScreen() {
   const insets = useSafeAreaInsets();
   const { lang, userId } = useTwinStore();
-  const theme = useTheme();
+  const theme = useAppTheme();
   const isAr = lang === 'ar';
   const isDark = theme.isDark;
   const [stories, setStories] = useState<string[]>([]);

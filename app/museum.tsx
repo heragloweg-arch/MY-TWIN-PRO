@@ -6,10 +6,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore, TwinStyle, TwinGender, ReplyStyle } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { router } from 'expo-router';
 import { apiGet } from '../lib/httpClient';
-import { previewVoice } from '../utils/voice_engine';
+import { voiceEngine.getConfig } from '../../engine/voice/VoiceEngine';
 import {
   ArrowLeft, Heart, Brain, Zap, Sparkles, TrendingUp,
   Fingerprint, User, Activity, Star, Crown,
@@ -36,7 +36,7 @@ const T = {
     resetMsg: 'هل تريد استعادة الإعدادات الافتراضية؟',
     cancel: 'إلغاء', confirmReset: 'تعيين',
     enterNameError: 'الرجاء إدخال اسم', mood: 'مزاج التوأم',
-    relationship: 'العلاقة', previewVoice: 'جرب الصوت',
+    relationship: 'العلاقة', voiceEngine.getConfig: 'جرب الصوت',
     voicePreviewText: 'مرحباً، أنا توأمك الرقمي. سأكون معك في كل خطوة.',
     twinAvatar: 'صورة التوأم',
     phaseLabels: { introduction: 'تعارف', trust_building: 'بناء ثقة', deepening: 'تعمق', growth: 'نمو', mature: 'نضج' } as Record<string, string>,
@@ -61,7 +61,7 @@ const T = {
     resetMsg: 'Reset to default settings?', cancel: 'Cancel',
     confirmReset: 'Reset', enterNameError: 'Please enter a name',
     mood: 'Twin Mood', relationship: 'Relationship',
-    previewVoice: 'Preview Voice',
+    voiceEngine.getConfig: 'Preview Voice',
     voicePreviewText: 'Hello, I am your digital twin. I will be with you every step.',
     twinAvatar: 'Twin Avatar',
     phaseLabels: { introduction: 'Intro', trust_building: 'Trust', deepening: 'Deepening', growth: 'Growth', mature: 'Mature' } as Record<string, string>,
@@ -99,7 +99,7 @@ export default function TwinMuseum() {
     voiceEnabled, setVoiceEnabled, voicePersonality, lang,
     setVoicePersonality,
   } = useTwinStore();
-  const theme = useTheme();
+  const theme = useAppTheme();
   const isAr = lang === 'ar';
   const isDark = theme.isDark;
   const t = T[lang] || T['ar'];
@@ -220,7 +220,7 @@ export default function TwinMuseum() {
     if (previewingVoice) return;
     setPreviewingVoice(true);
     try {
-      await previewVoice(t.voicePreviewText, {
+      await voiceEngine.getConfig(t.voicePreviewText, {
         gender: gender,
         lang: lang,
       });
@@ -431,7 +431,7 @@ export default function TwinMuseum() {
           ) : (
             <>
               <Volume2 size={18} stroke="#FFF" />
-              <Text style={st.previewText}>{t.previewVoice}</Text>
+              <Text style={st.previewText}>{t.voiceEngine.getConfig}</Text>
             </>
           )}
         </TouchableOpacity>

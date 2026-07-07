@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTwinStore } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useAppTheme } from '../engine/colors';
 import { router } from 'expo-router';
 import { removeToken } from '../lib/auth';
 import { apiGet } from '../lib/httpClient';
@@ -132,7 +132,7 @@ const mi = StyleSheet.create({
 export default function SideMenu({ visible, onClose, children }: SideMenuProps) {
   const insets = useSafeAreaInsets();
   const { userId, twinName, tier, lang, points, bondLevel } = useTwinStore();
-  const theme = useTheme();
+  const theme = useAppTheme();
   const isAr = lang === 'ar';
   const isDark = theme.isDark;
 

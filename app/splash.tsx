@@ -10,7 +10,7 @@ const SPLASH_BG = require('../assets/splash.png');
 const LOGO = require('../assets/logo.png');
 const { width, height } = Dimensions.get('window');
 
-// 🛡️ ثوابت بدلاً من useTheme (لتجنب flash)
+// 🛡️ ثوابت بدلاً من useAppTheme (لتجنب flash)
 const DARK_BG = '#0A0014';
 const LIGHT_BG = '#FAFAF8';
 const TEXT_DARK = '#FFFFFF';
