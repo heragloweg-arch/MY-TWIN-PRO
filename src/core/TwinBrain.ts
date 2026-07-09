@@ -1,6 +1,8 @@
 import { sendMessage, streamMessage, ChatResponse } from '../services/twinApi';
 import { livingIntelligence, AssembledContext } from './LivingIntelligence';
 import { EventBus } from './EventBus';
+import { emotionEngine } from '../../engine/emotion/EmotionEngine';
+import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
 
 export interface ThinkingPhase {
   phase: 'observe' | 'understand' | 'recall' | 'reason' | 'respond';
@@ -18,6 +20,17 @@ export interface BrainResponse {
   contextUsed: AssembledContext | null;
 }
 
+export interface PersonalityDNA {
+  empathy: number;
+  curiosity: number;
+  humor: number;
+  initiative: number;
+  reflection: number;
+  logic: number;
+  creativity: number;
+  calmness: number;
+}
+
 const EMOTION_COLORS: Record<string, string> = {
   joy: '#F59E0B', sadness: '#3B82F6', calm: '#10B981',
   love: '#EC4899', anger: '#EF4444', fear: '#A78BFA',
@@ -29,6 +42,10 @@ export class TwinBrain {
   private userId: string;
   private lang: string;
   private onThinkingUpdate?: (phase: ThinkingPhase) => void;
+  private personalityDNA: PersonalityDNA = {
+    empathy: 0.85, curiosity: 0.8, humor: 0.5, initiative: 0.6,
+    reflection: 0.9, logic: 0.75, creativity: 0.8, calmness: 0.85,
+  };
 
   constructor(userId: string = '', lang: string = 'ar') {
     this.userId = userId;
@@ -37,6 +54,28 @@ export class TwinBrain {
 
   onThinking(callback: (phase: ThinkingPhase) => void): void {
     this.onThinkingUpdate = callback;
+  }
+
+  setPersonalityDNA(dna: Partial<PersonalityDNA>): void {
+    this.personalityDNA = { ...this.personalityDNA, ...dna };
+  }
+
+  getPersonalityDNA(): PersonalityDNA {
+    return { ...this.personalityDNA };
+  }
+
+  private buildPersonalityContext(): string {
+    const dna = this.personalityDNA;
+    const attachment = relationshipEngine.getAttachmentModel();
+    const emotion = emotionEngine.getCurrentEmotion();
+
+    return `[PERSONALITY]
+Empathy: ${dna.empathy}, Curiosity: ${dna.curiosity}, Humor: ${dna.humor}
+Initiative: ${dna.initiative}, Reflection: ${dna.reflection}
+Logic: ${dna.logic}, Creativity: ${dna.creativity}, Calmness: ${dna.calmness}
+Attachment Style: ${attachment.style}
+Current Emotion: ${emotion}
+[/PERSONALITY]`;
   }
 
   async process(message: string, history: Array<{ role: string; content: string }> = []): Promise<BrainResponse> {
@@ -53,21 +92,24 @@ export class TwinBrain {
     await this.delay(300);
     phases.push({ phase: 'recall', progress: 1.0, label: 'يتذكر...' });
 
-    // إصدار حدث MEMORY_SURFACED مع لون العاطفة الحالية
     const context = livingIntelligence.getLastContext();
     if (context?.memory?.recentMessages && context.memory.recentMessages.length > 0) {
       EventBus.emit('MEMORY_SURFACED', {
-        memoryId: Date.now().toString(),
-        relevance: 0.8,
-        emotionalWeight: 0.7,
+        memoryId: Date.now().toString(), relevance: 0.8, emotionalWeight: 0.7,
         color: EMOTION_COLORS[context.emotion.primaryEmotion] || '#A855F7',
       });
     }
 
     this.emitThinking('reason', 0.75, 'يفكر...');
+
+    // إضافة سياق الشخصية
+    const personalityContext = this.buildPersonalityContext();
+    const enrichedHistory = [...history];
+    enrichedHistory.unshift({ role: 'system', content: personalityContext });
+
     let result: { reply: string; provider: string; contextUsed: AssembledContext; relationshipDelta: number };
     try {
-      result = await livingIntelligence.processMessage(message, history);
+      result = await livingIntelligence.processMessage(message, enrichedHistory);
     } catch (error) {
       throw new Error('فشل الاتصال بالعقل المركزي');
     }
@@ -77,11 +119,9 @@ export class TwinBrain {
     phases.push({ phase: 'respond', progress: 1.0, label: 'يستجيب...' });
 
     return {
-      reply: result.reply,
-      provider: result.provider,
+      reply: result.reply, provider: result.provider,
       emotion: result.contextUsed.emotion.primaryEmotion,
-      thinkingPhases: phases,
-      memoryStored: true,
+      thinkingPhases: phases, memoryStored: true,
       relationshipDelta: result.relationshipDelta,
       contextUsed: result.contextUsed,
     };
@@ -97,9 +137,7 @@ export class TwinBrain {
     const context = livingIntelligence.getLastContext();
     if (context?.memory?.recentMessages && context.memory.recentMessages.length > 0) {
       EventBus.emit('MEMORY_SURFACED', {
-        memoryId: Date.now().toString(),
-        relevance: 0.8,
-        emotionalWeight: 0.7,
+        memoryId: Date.now().toString(), relevance: 0.8, emotionalWeight: 0.7,
         color: EMOTION_COLORS[context.emotion.primaryEmotion] || '#A855F7',
       });
     }

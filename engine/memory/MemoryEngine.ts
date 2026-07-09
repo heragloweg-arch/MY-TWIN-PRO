@@ -1,8 +1,3 @@
-/**
- * MEMORY ENGINE v2.0 – محرك الذاكرة الموحد
- * =============================================
- * يدمج: MemoryEngine + MemoryRetrieval
- */
 import { stateBus, STATE_EVENTS } from '../core/StateBus';
 import { useTwinState } from '../core/TwinState';
 
@@ -54,7 +49,6 @@ export class MemoryEngine {
     return this.recentMemories.filter(m => m.type === type).sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, limit);
   }
 
-  // ── Smart Retrieval (من MemoryRetrieval سابقاً) ──
   async smartRetrieve(context: { currentEmotion: string; currentTopic: string; timeOfDay: string; recentTopics: string[] }, limit: number = 5): Promise<MemoryEntry[]> {
     useTwinState.getState().setIsSearchingMemory(true);
     const terms = [context.currentTopic, context.currentEmotion, ...context.recentTopics].filter(Boolean);
@@ -79,6 +73,39 @@ export class MemoryEngine {
   }
 
   getMemoryCount(): number { return this.recentMemories.length; }
+
+  // ═══════════════════════════════════════════════════
+  // المرحلة E: Memory Ranking + Forgetting + Long-term
+  // ═══════════════════════════════════════════════════
+
+  rankByImportance(): MemoryEntry[] {
+    return [...this.recentMemories].sort((a, b) => b.importance - a.importance);
+  }
+
+  applyForgettingRules(): void {
+    const now = Date.now();
+    this.recentMemories = this.recentMemories.filter(m => {
+      const age = now - new Date(m.timestamp).getTime();
+      const days = age / (1000 * 60 * 60 * 24);
+      if (m.importance >= 80) return true; // ذكريات الحياة لا تُنسى
+      if (m.importance >= 60 && days < 180) return true;
+      if (m.importance >= 40 && days < 90) return true;
+      if (m.importance >= 20 && days < 30) return true;
+      return days < 7;
+    });
+  }
+
+  getLongTermMemories(months: number = 6): MemoryEntry[] {
+    const now = Date.now();
+    const threshold = now - months * 30 * 24 * 60 * 60 * 1000;
+    return this.rankByImportance().filter(m => new Date(m.timestamp).getTime() < threshold && m.importance >= 60);
+  }
+
+  getMemoryEmotionWeight(emotion: string): number {
+    const emotionMemories = this.recentMemories.filter(m => m.emotion === emotion);
+    if (emotionMemories.length === 0) return 0;
+    return emotionMemories.reduce((sum, m) => sum + m.importance, 0) / emotionMemories.length / 100;
+  }
 }
 
 export const memoryEngine = new MemoryEngine();

@@ -4,6 +4,12 @@ import {
   sendMessage, getTwinState, getRecentMemories, storeMemory,
   getRelationshipHealth, getRelationshipInsights, ChatResponse, TwinStateResponse,
 } from '../services/twinApi';
+import { continuityCoordinator } from '../coordinators/ContinuityCoordinator';
+import { presenceCoordinator } from '../coordinators/PresenceCoordinator';
+import { personalityCoordinator } from '../coordinators/PersonalityCoordinator';
+import { growthCoordinator } from '../coordinators/GrowthCoordinator';
+import { selfAwarenessCoordinator } from '../coordinators/SelfAwarenessCoordinator';
+import { goalCoordinator } from '../coordinators/GoalCoordinator';
 
 interface EmotionalState {
   primaryEmotion: string; intensity: number;
@@ -46,12 +52,16 @@ export class LivingIntelligence {
   private userId: string = '';
   private lang: string = 'ar';
 
-  start(userId: string, lang: string = 'ar'): void {
+  async start(userId: string, lang: string = 'ar'): Promise<void> {
     if (this.state.isActive) return;
     this.userId = userId;
     this.lang = lang;
     this.state.isActive = true;
     this.state.lastInteractionTime = Date.now();
+
+    await continuityCoordinator.initialize(userId);
+    await personalityCoordinator.generateDNA(userId);
+
     this.startRuntimeLoop();
     this.assembleContext();
     EventBus.emit('PRESENCE_CHANGED', { from: 0, to: 1, trigger: 'intelligence_start' });
@@ -67,21 +77,31 @@ export class LivingIntelligence {
   }> {
     this.state.lastInteractionTime = Date.now();
     this.state.interactionCount++;
+
+    presenceCoordinator.registerMessage();
     const context = await this.assembleContext();
     const enrichedHistory = this.enrichHistory(history, context);
+
     let chatResult: ChatResponse;
     try {
       chatResult = await sendMessage(message, enrichedHistory, this.lang, this.userId);
     } catch (error) {
       throw new Error('فشل الاتصال بالعقل المركزي');
     }
+
     await this.updateMemory(message, chatResult.reply, context);
     const relationshipDelta = await this.updateRelationship(context);
+
+    personalityCoordinator.evolveDNA('positive');
+    growthCoordinator.recordGrowth();
+    continuityCoordinator.recordLifeBookEntry(`محادثة: ${message.substring(0, 30)}...`);
+
     EventBus.emit('MEMORY_CREATED', { memoryId: `msg_${Date.now().toString(36)}`, layer: 'context' });
     EventBus.emit('EMOTIONAL_STATE_CHANGED', {
       emotion: context.emotion.primaryEmotion, intensity: context.emotion.intensity,
       valence: context.emotion.valence, confidence: context.emotion.confidence,
     });
+
     return { reply: chatResult.reply, provider: chatResult.provider, contextUsed: context, relationshipDelta };
   }
 
@@ -127,6 +147,13 @@ export class LivingIntelligence {
       StateBus.update({ spaceEnergy, uptime: Math.floor(now / 1000) });
       if (secondsSinceLastInteraction > 3600 && this.state.energyLevel < 0.2) {
         StateBus.update({ presenceLevel: 0, interfaceState: 'dormant' });
+      }
+
+      // تشغيل المنسقين الدوريين كل دقيقة
+      if (Math.floor(now / 60000) !== Math.floor((now - 1000) / 60000)) {
+        presenceCoordinator.generateCheckIn();
+        selfAwarenessCoordinator.reflect();
+        goalCoordinator.detectGoalsFromMemories();
       }
     }, 1000);
   }

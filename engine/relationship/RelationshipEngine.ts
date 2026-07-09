@@ -1,14 +1,10 @@
-/**
- * RELATIONSHIP ENGINE v2.0 – محرك العلاقة الموحد
- * ===================================================
- * يدمج: RelationshipEngine + BondDynamics
- */
 import { stateBus, STATE_EVENTS } from '../core/StateBus';
 import { useTwinState } from '../core/TwinState';
 
 type RelationshipPhase = 'stranger' | 'acquaintance' | 'friend' | 'close_friend' | 'soulmate';
 interface BondMetrics { trust: number; intimacy: number; consistency: number; shared_experiences: number; }
 interface BondSnapshot { timestamp: string; bondLevel: number; phase: string; }
+interface AttachmentProfile { style: 'secure' | 'anxious' | 'avoidant' | 'disorganized'; score: number; }
 
 export class RelationshipEngine {
   private memoryClient: any = null;
@@ -17,6 +13,8 @@ export class RelationshipEngine {
   private interactionCount: number = 0;
   private positiveInteractions: number = 0;
   private history: BondSnapshot[] = [];
+  private trustBreaches: number = 0;
+  private bondVelocity: number = 0; // سرعة نمو الرابطة
 
   setMemoryClient(client: any): void { this.memoryClient = client; this.loadFromMemory(); }
 
@@ -31,6 +29,7 @@ export class RelationshipEngine {
     if (quality === 'positive') { this.metrics.trust = Math.min(100, this.metrics.trust + 2); this.metrics.intimacy = Math.min(100, this.metrics.intimacy + 1.5); }
     else if (quality === 'negative') { this.metrics.trust = Math.max(0, this.metrics.trust - 1); }
     const avg = (this.metrics.trust + this.metrics.intimacy + this.metrics.consistency + this.metrics.shared_experiences) / 4;
+    this.bondVelocity = avg - this.getBondLevel();
     if (avg >= 85 && this.interactionCount > 100) this.phase = 'soulmate';
     else if (avg >= 70 && this.interactionCount > 50) this.phase = 'close_friend';
     else if (avg >= 50 && this.interactionCount > 20) this.phase = 'friend';
@@ -47,7 +46,6 @@ export class RelationshipEngine {
   getPhase(): RelationshipPhase { return this.phase; }
   getMetrics(): BondMetrics { return { ...this.metrics }; }
 
-  // ── BondDynamics ──────────────────────────────────────
   snapshot(): void {
     this.history.push({ timestamp: new Date().toISOString(), bondLevel: this.getBondLevel(), phase: this.phase });
     if (this.history.length > 50) this.history = this.history.slice(-50);
@@ -65,6 +63,42 @@ export class RelationshipEngine {
     return 'الرابطة بيننا قوية.';
   }
   getHistory(): BondSnapshot[] { return [...this.history]; }
+
+  // ═══════════════════════════════════════════════════
+  // المرحلة E: Attachment Model + Trust Recovery + Bond Evolution
+  // ═══════════════════════════════════════════════════
+
+  getAttachmentModel(): AttachmentProfile {
+    const ratio = this.interactionCount > 0 ? this.positiveInteractions / this.interactionCount : 0.5;
+    let style: AttachmentProfile['style'] = 'secure';
+    if (ratio > 0.8 && this.metrics.trust > 70) style = 'secure';
+    else if (ratio < 0.4 || this.trustBreaches > 2) style = 'avoidant';
+    else if (this.metrics.intimacy > 70 && this.metrics.trust < 50) style = 'anxious';
+    else if (ratio < 0.6 && this.trustBreaches > 0) style = 'disorganized';
+    return { style, score: this.metrics.trust };
+  }
+
+  recoverTrust(amount: number): number {
+    this.trustBreaches = Math.max(0, this.trustBreaches - 1);
+    this.metrics.trust = Math.min(100, this.metrics.trust + amount);
+    stateBus.emit(STATE_EVENTS.BOND_CHANGED, { phase: this.phase, metrics: this.metrics, bondLevel: this.getBondLevel(), recovered: true });
+    return this.metrics.trust;
+  }
+
+  getBondEvolution(): BondSnapshot[] {
+    if (this.history.length < 2) {
+      this.snapshot();
+    }
+    return this.history.map((s, i) => ({
+      ...s,
+      velocity: i > 0 ? s.bondLevel - this.history[i - 1].bondLevel : 0,
+    }));
+  }
+
+  registerTrustBreach(): void {
+    this.trustBreaches++;
+    this.metrics.trust = Math.max(0, this.metrics.trust - 5);
+  }
 }
 
 export const relationshipEngine = new RelationshipEngine();

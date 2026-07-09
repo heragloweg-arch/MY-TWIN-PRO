@@ -1,14 +1,6 @@
-/**
- * EMOTION ENGINE v1.0 – محرك المشاعر
- * ======================================
- * يدير المشاعر الـ 12 للكيان الرقمي.
- * يدعم انتقالات تدريجية بين المشاعر (Emotion Transition).
- * يتأثر بـ: حالة المستخدم، الذاكرة العاطفية، مستوى الرابطة.
- */
 import { stateBus, STATE_EVENTS } from '../core/StateBus';
 import { useTwinState, Emotion } from '../core/TwinState';
 
-// مصفوفة توافق المشاعر – أي المشاعر يمكن الانتقال منها وإليها
 const EMOTION_COMPATIBILITY: Record<Emotion, Emotion[]> = {
   joy: ['calm', 'love', 'inspired', 'happy', 'neutral'],
   sadness: ['neutral', 'calm', 'concerned', 'fear', 'curious'],
@@ -27,57 +19,37 @@ const EMOTION_COMPATIBILITY: Record<Emotion, Emotion[]> = {
 export class EmotionEngine {
   private memoryClient: any = null;
   private currentEmotion: Emotion = 'neutral';
-  private emotionIntensity: number = 0.5; // 0-1
+  private emotionIntensity: number = 0.5;
   private transitionInProgress: boolean = false;
+  private personalityInfluence: number = 0;
 
-  setMemoryClient(client: any): void {
-    this.memoryClient = client;
-  }
+  setMemoryClient(client: any): void { this.memoryClient = client; }
 
-  /**
-   * تغيير المشاعر مع انتقال تدريجي
-   */
   async setEmotion(target: Emotion, intensity: number = 0.7): Promise<void> {
     if (this.transitionInProgress) return;
     if (!this.canTransition(this.currentEmotion, target)) return;
-
     const from = this.currentEmotion;
     this.transitionInProgress = true;
-
-    // انتقال تدريجي (عدة خطوات صغيرة)
     const steps = 5;
     const stepDelay = 150;
     const intensityStep = (intensity - this.emotionIntensity) / steps;
-
     for (let i = 1; i <= steps; i++) {
       this.emotionIntensity += intensityStep;
       await new Promise(resolve => setTimeout(resolve, stepDelay));
     }
-
     this.currentEmotion = target;
     this.emotionIntensity = intensity;
     this.transitionInProgress = false;
-
     const store = useTwinState.getState();
     store.setEmotion(target);
-
-    stateBus.emit(STATE_EVENTS.EMOTION_CHANGED, {
-      from, to: target, intensity,
-      transitionDuration: steps * stepDelay,
-    });
+    stateBus.emit(STATE_EVENTS.EMOTION_CHANGED, { from, to: target, intensity, transitionDuration: steps * stepDelay });
   }
 
-  /**
-   * التحقق من إمكانية الانتقال بين مشاعرين
-   */
   canTransition(from: Emotion, to: Emotion): boolean {
     const compatible = EMOTION_COMPATIBILITY[from];
     return compatible ? compatible.includes(to) : false;
   }
 
-  /**
-   * تحديث المشاعر بناءً على سياق المستخدم
-   */
   reactToUserEmotion(userEmotion: string): void {
     const mapping: Record<string, Emotion> = {
       joy: 'joy', happiness: 'joy', excited: 'inspired',
@@ -89,23 +61,44 @@ export class EmotionEngine {
       calm: 'calm', peaceful: 'calm',
       focused: 'focused', determined: 'focused',
     };
-
     const targetEmotion = mapping[userEmotion.toLowerCase()] || 'neutral';
     if (targetEmotion !== this.currentEmotion) {
       this.setEmotion(targetEmotion, 0.6);
     }
   }
 
-  /**
-   * المشاعر الحالية
-   */
-  getCurrentEmotion(): Emotion {
-    return this.currentEmotion;
+  getCurrentEmotion(): Emotion { return this.currentEmotion; }
+  getIntensity(): number { return this.emotionIntensity; }
+
+  // ═══════════════════════════════════════════════════
+  // المرحلة E: Personality Influence
+  // ═══════════════════════════════════════════════════
+
+  setPersonalityInfluence(value: number): void {
+    this.personalityInfluence = Math.max(-1, Math.min(1, value));
   }
 
-  getIntensity(): number {
-    return this.emotionIntensity;
+  applyPersonalityInfluence(dna: { empathy: number; curiosity: number; humor: number; calmness: number }): Emotion {
+    const current = this.currentEmotion;
+    const intensity = this.emotionIntensity;
+
+    if (dna.calmness > 0.8 && (current === 'anger' || current === 'fear')) {
+      return 'calm';
+    }
+    if (dna.curiosity > 0.8 && current === 'neutral') {
+      return 'curious';
+    }
+    if (dna.empathy > 0.9 && current === 'sadness') {
+      return 'love';
+    }
+    if (dna.humor > 0.7 && current === 'joy') {
+      return 'happy';
+    }
+
+    return current;
   }
+
+  getPersonalityInfluence(): number { return this.personalityInfluence; }
 }
 
 export const emotionEngine = new EmotionEngine();
