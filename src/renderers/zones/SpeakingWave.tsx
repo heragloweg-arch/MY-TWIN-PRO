@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, Easing } from 'react-native';
-import { useTwinState } from '../../engine/core/TwinState';
-import { useLivingTheme } from '../../engine/living-theme';
+import { useTwinState } from '../../../engine/core/TwinState';
+import { useLivingTheme } from '../../../engine/living-theme';
 
 export const SpeakingWave = ({ barCount = 5 }: { barCount?: number }) => {
   const theme = useLivingTheme();

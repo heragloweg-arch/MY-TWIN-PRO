@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View, Text, Image } from 'react-native';
 import { Audio } from 'expo-av';
-import { useTwinStore } from '../store/useTwinStore';
-import { useTheme } from '../utils/theme';
+import { useTwinStore } from '../../../store/useTwinStore';
+import { useTheme } from '../../../utils/theme';
 
 const EMOTION_CONFIG: Record<string, { emoji: string; color: string; pulseSpeed: number }> = {
   joy:       { emoji: '😊', color: '#F59E0B', pulseSpeed: 800 },
@@ -35,9 +35,9 @@ interface Props {
 }
 
 // صورة الخلفية الكونية (تم إنشاؤها مسبقاً)
-const COSMIC_BG = require('../assets/bg_cosmic_dark.png');
+const COSMIC_BG = require('../../../assets/bg_cosmic_dark.png');
 // صوت النبض (اختياري عند تغير العاطفة)
-const PULSE_SOUND = require('../assets/pulse.mp3');
+const PULSE_SOUND = require('../../../assets/pulse.mp3');
 
 export default function EmotionalAvatar({
   emotion,

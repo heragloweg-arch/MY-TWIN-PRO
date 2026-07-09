@@ -1,0 +1,126 @@
+import { sendMessage, streamMessage, ChatResponse } from '../services/twinApi';
+import { livingIntelligence, AssembledContext } from './LivingIntelligence';
+import { EventBus } from './EventBus';
+
+export interface ThinkingPhase {
+  phase: 'observe' | 'understand' | 'recall' | 'reason' | 'respond';
+  progress: number;
+  label: string;
+}
+
+export interface BrainResponse {
+  reply: string;
+  provider: string;
+  emotion: string;
+  thinkingPhases: ThinkingPhase[];
+  memoryStored: boolean;
+  relationshipDelta: number;
+  contextUsed: AssembledContext | null;
+}
+
+const EMOTION_COLORS: Record<string, string> = {
+  joy: '#F59E0B', sadness: '#3B82F6', calm: '#10B981',
+  love: '#EC4899', anger: '#EF4444', fear: '#A78BFA',
+  neutral: '#A855F7', curious: '#8B5CF6', focused: '#3B82F6',
+  inspired: '#10B981', concerned: '#F97316', happy: '#FBBF24',
+};
+
+export class TwinBrain {
+  private userId: string;
+  private lang: string;
+  private onThinkingUpdate?: (phase: ThinkingPhase) => void;
+
+  constructor(userId: string = '', lang: string = 'ar') {
+    this.userId = userId;
+    this.lang = lang;
+  }
+
+  onThinking(callback: (phase: ThinkingPhase) => void): void {
+    this.onThinkingUpdate = callback;
+  }
+
+  async process(message: string, history: Array<{ role: string; content: string }> = []): Promise<BrainResponse> {
+    const phases: ThinkingPhase[] = [];
+
+    this.emitThinking('observe', 0.0, 'يراقب...');
+    phases.push({ phase: 'observe', progress: 1.0, label: 'يراقب...' });
+
+    this.emitThinking('understand', 0.25, 'يفهم...');
+    await this.delay(200);
+    phases.push({ phase: 'understand', progress: 1.0, label: 'يفهم...' });
+
+    this.emitThinking('recall', 0.5, 'يتذكر...');
+    await this.delay(300);
+    phases.push({ phase: 'recall', progress: 1.0, label: 'يتذكر...' });
+
+    // إصدار حدث MEMORY_SURFACED مع لون العاطفة الحالية
+    const context = livingIntelligence.getLastContext();
+    if (context?.memory?.recentMessages && context.memory.recentMessages.length > 0) {
+      EventBus.emit('MEMORY_SURFACED', {
+        memoryId: Date.now().toString(),
+        relevance: 0.8,
+        emotionalWeight: 0.7,
+        color: EMOTION_COLORS[context.emotion.primaryEmotion] || '#A855F7',
+      });
+    }
+
+    this.emitThinking('reason', 0.75, 'يفكر...');
+    let result: { reply: string; provider: string; contextUsed: AssembledContext; relationshipDelta: number };
+    try {
+      result = await livingIntelligence.processMessage(message, history);
+    } catch (error) {
+      throw new Error('فشل الاتصال بالعقل المركزي');
+    }
+    phases.push({ phase: 'reason', progress: 1.0, label: 'يفكر...' });
+
+    this.emitThinking('respond', 1.0, 'يستجيب...');
+    phases.push({ phase: 'respond', progress: 1.0, label: 'يستجيب...' });
+
+    return {
+      reply: result.reply,
+      provider: result.provider,
+      emotion: result.contextUsed.emotion.primaryEmotion,
+      thinkingPhases: phases,
+      memoryStored: true,
+      relationshipDelta: result.relationshipDelta,
+      contextUsed: result.contextUsed,
+    };
+  }
+
+  async streamProcess(message: string, onToken: (token: string) => void, onDone: () => void, onError: (err: string) => void): Promise<void> {
+    this.emitThinking('observe', 0.0, 'يراقب...');
+    await this.delay(100);
+    this.emitThinking('understand', 0.25, 'يفهم...');
+    await this.delay(150);
+    this.emitThinking('recall', 0.5, 'يتذكر...');
+
+    const context = livingIntelligence.getLastContext();
+    if (context?.memory?.recentMessages && context.memory.recentMessages.length > 0) {
+      EventBus.emit('MEMORY_SURFACED', {
+        memoryId: Date.now().toString(),
+        relevance: 0.8,
+        emotionalWeight: 0.7,
+        color: EMOTION_COLORS[context.emotion.primaryEmotion] || '#A855F7',
+      });
+    }
+
+    await this.delay(200);
+    this.emitThinking('reason', 0.75, 'يفكر...');
+
+    streamMessage(message, (token: string) => onToken(token), () => {
+      this.emitThinking('respond', 1.0, 'يستجيب...');
+      onDone();
+    }, (err: string) => onError(err), this.lang);
+  }
+
+  setUserId(userId: string): void { this.userId = userId; livingIntelligence.setUserId(userId); }
+  setLang(lang: string): void { this.lang = lang; livingIntelligence.setLang(lang); }
+
+  private emitThinking(phase: ThinkingPhase['phase'], progress: number, label: string): void {
+    this.onThinkingUpdate?.({ phase, progress, label });
+  }
+
+  private delay(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
+}
+
+export const twinBrain = new TwinBrain();

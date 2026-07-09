@@ -1,13 +1,9 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { useAnimatedStyle, interpolate } from 'react-native-reanimated';
+import { RADIUS } from '../../../src/design/tokens/spacing';
 
-interface PresenceBubbleProps {
-  breathPhase: number;
-  presenceLevel: number;
-}
-
-export default function PresenceBubble({ breathPhase, presenceLevel }: PresenceBubbleProps) {
+export default function PresenceBubble({ breathPhase, presenceLevel }: { breathPhase: number; presenceLevel: number }) {
   const bubbleStyle = useAnimatedStyle(() => {
     const scale = interpolate(breathPhase, [0, 0.5, 1], [0.85, 1.05, 0.85]);
     const opacity = 0.2 + presenceLevel * 0.06;
@@ -19,12 +15,8 @@ export default function PresenceBubble({ breathPhase, presenceLevel }: PresenceB
 
 const styles = StyleSheet.create({
   bubble: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 1.5,
-    borderColor: 'rgba(180,160,200,0.3)',
-    position: 'absolute',
-    alignSelf: 'center',
+    width: 120, height: 120, borderRadius: RADIUS.avatar,
+    borderWidth: 1.5, borderColor: 'rgba(180,160,200,0.3)',
+    position: 'absolute', alignSelf: 'center',
   },
 });

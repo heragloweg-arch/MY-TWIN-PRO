@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Animated, ViewStyle, TouchableOpacity } from 'react-native';
-import { useLivingTheme } from '../../engine/living-theme';
+import { useLivingTheme } from '../../../engine/living-theme';
 import { Sparkles, Brain, Zap, Star, Cloud, Eye, Search, TrendingUp } from 'lucide-react-native';
 
 type Variant = 'twin' | 'user' | 'warning' | 'success' | 'memory' | 'dream' | 'task' | 'project' | 'insight' | 'glass';

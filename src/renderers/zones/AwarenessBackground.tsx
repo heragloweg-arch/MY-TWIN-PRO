@@ -5,9 +5,9 @@ import Animated, {
   interpolate, Easing, Extrapolation,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLivingTheme } from '../../engine/living-theme';
-import { useTwinState } from '../../engine/core/TwinState';
-import type { ConsciousnessMode } from '../../engine/core/TwinState';
+import { useLivingTheme } from '../../../engine/living-theme';
+import { useTwinState } from '../../../engine/core/TwinState';
+import type { ConsciousnessMode } from '../../../engine/core/TwinState';
 
 const { width } = Dimensions.get('window');
 
