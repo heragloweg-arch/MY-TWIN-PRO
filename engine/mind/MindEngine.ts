@@ -1,70 +1,141 @@
+/**
+ * MIND ENGINE v1.0 — محرك العقل المركزي
+ * ========================================
+ * ينسق عمليات التفكير والتحليل والاستدلال.
+ * هذا هو "العقل" الذي يربط:
+ * - الذاكرة (MemoryEngine)
+ * - المشاعر (EmotionEngine)
+ * - العلاقة (RelationshipEngine)
+ * - التفكير المعرفي (CognitiveEngine)
+ *
+ * يعمل كجسر بين BehaviorEngine وكل المحركات المعرفية.
+ */
+
+import { useTwinState, ConsciousnessMode } from '../core/TwinState';
 import { stateBus, STATE_EVENTS } from '../core/StateBus';
-import { useTwinState, AwarenessLevel, ConsciousnessMode, PresenceLevel } from '../core/TwinState';
+import { stateMachine } from '../core/StateMachine';
+import { memoryEngine } from '../memory/MemoryEngine';
+import { emotionEngine } from '../emotion/EmotionEngine';
+import { relationshipEngine } from '../relationship/RelationshipEngine';
+
+export interface MindContext {
+  userMessage: string;
+  userEmotion: string;
+  currentTopic: string;
+  timeOfDay: string;
+  recentTopics: string[];
+  conversationHistory: Array<{ role: string; content: string }>;
+}
+
+export interface ThoughtResult {
+  response: string;
+  emotion: string;
+  confidence: number;
+  memoriesUsed: string[];
+  thinkingTime: number;
+}
 
 export class MindEngine {
-  private memoryClient: any = null;
-  private attention: number = 80;
-  private focus: number = 70;
-  private confidence: number = 75;
-  private presenceLevel: PresenceLevel = 'aware';
-  private presenceIntensity: number = 0.5;
+  private isProcessing = false;
+  private thinkingStartTime = 0;
 
-  setMemoryClient(client: any): void { this.memoryClient = client; }
-
-  updateAwareness(mode: ConsciousnessMode): void {
-    const store = useTwinState.getState();
-    switch (mode) {
-      case 'deep_thinking': this.attention = 95; this.focus = 95; this.confidence = 70; break;
-      case 'analyzing': this.attention = 90; this.focus = 90; this.confidence = 80; break;
-      case 'thinking': this.attention = 85; this.focus = 75; this.confidence = 75; break;
-      case 'searching_memory': this.attention = 80; this.focus = 85; this.confidence = 60; break;
-      case 'speaking': this.attention = 70; this.focus = 60; this.confidence = 85; break;
-      case 'listening': this.attention = 90; this.focus = 50; this.confidence = 80; break;
-      case 'learning': this.attention = 85; this.focus = 80; this.confidence = 65; break;
-      case 'emotional': this.attention = 75; this.focus = 40; this.confidence = 50; break;
-      default: this.attention = 80; this.focus = 70; this.confidence = 75;
+  /**
+   * عملية تفكير كاملة — من استلام الرسالة إلى إنتاج الرد.
+   */
+  async think(context: MindContext): Promise<ThoughtResult> {
+    if (this.isProcessing) {
+      return {
+        response: '',
+        emotion: 'neutral',
+        confidence: 0,
+        memoriesUsed: [],
+        thinkingTime: 0,
+      };
     }
-    const bondFactor = store.bondLevel / 100;
-    this.confidence = Math.min(100, this.confidence + bondFactor * 10);
-    store.setAttention(this.attention);
-    store.setConfidence(this.confidence);
-    const avg = (this.attention + this.focus + this.confidence) / 3;
-    let level: AwarenessLevel;
-    if (avg >= 90) level = 'Conscious'; else if (avg >= 80) level = 'Flow'; else if (avg >= 70) level = 'DeepThinking'; else if (avg >= 60) level = 'Focused'; else if (avg >= 40) level = 'Aware'; else level = 'Dormant';
-    store.setAwarenessLevel(level);
-    stateBus.emit(STATE_EVENTS.AWARENESS_CHANGED, { attention: this.attention, focus: this.focus, confidence: this.confidence, awarenessLevel: level });
+
+    this.isProcessing = true;
+    this.thinkingStartTime = Date.now();
+    const store = useTwinState.getState();
+
+    try {
+      // ── المرحلة 1: الاستماع والانتباه ──
+      stateMachine.safeTransition('listening');
+      store.setMode('listening');
+
+      // ── المرحلة 2: تحليل المشاعر ──
+      stateMachine.safeTransition('emotional');
+      if (context.userEmotion) {
+        emotionEngine.reactToUserEmotion(context.userEmotion);
+      }
+
+      // ── المرحلة 3: البحث في الذاكرة ──
+      stateMachine.safeTransition('searching_memory');
+      const memories = await memoryEngine.smartRetrieve({
+        currentEmotion: emotionEngine.getCurrentEmotion(),
+        currentTopic: context.currentTopic,
+        timeOfDay: context.timeOfDay,
+        recentTopics: context.recentTopics,
+      }, 5);
+
+      const memoryContents = memories.map(m => m.content);
+
+      // ── المرحلة 4: التفكير العميق ──
+      stateMachine.safeTransition('deep_thinking');
+      store.setMode('deep_thinking');
+
+      // تسجيل التفاعل في العلاقة
+      await relationshipEngine.recordInteraction('positive', context.userMessage);
+
+      // ── المرحلة 5: تجميع النتيجة ──
+      const thinkingTime = Date.now() - this.thinkingStartTime;
+
+      return {
+        response: '', // يملأه CognitiveEngine أو AI
+        emotion: emotionEngine.getCurrentEmotion(),
+        confidence: store.confidence,
+        memoriesUsed: memoryContents,
+        thinkingTime,
+      };
+    } finally {
+      this.isProcessing = false;
+    }
   }
 
-  updatePresence(userActivity: 'idle' | 'typing' | 'speaking' | 'reading'): void {
-    const store = useTwinState.getState();
-    const bondFactor = store.bondLevel / 100;
-    const thinkingFactor = store.isThinking ? 0.3 : 0;
-    let newLevel: PresenceLevel; let newIntensity: number;
-    switch (userActivity) {
-      case 'speaking': newLevel = 'flow'; newIntensity = 0.9 + bondFactor * 0.1; break;
-      case 'typing': newLevel = 'focused'; newIntensity = 0.7 + thinkingFactor + bondFactor * 0.2; break;
-      case 'reading': newLevel = 'aware'; newIntensity = 0.4 + bondFactor * 0.2; break;
-      default: newLevel = bondFactor > 0.6 ? 'aware' : 'dormant'; newIntensity = 0.2 + bondFactor * 0.2; break;
-    }
-    newIntensity = Math.min(1, Math.max(0, newIntensity));
-    if (newLevel !== this.presenceLevel) {
-      const old = this.presenceLevel;
-      this.presenceLevel = newLevel;
-      this.presenceIntensity = newIntensity;
-      store.setPresence(newLevel);
-      stateBus.emit(STATE_EVENTS.PRESENCE_CHANGED, { from: old, to: newLevel, intensity: newIntensity });
-    }
+  /**
+   * بدء التفكير في رسالة مستخدم
+   */
+  async startThinking(message: string): Promise<void> {
+    stateMachine.safeTransition('thinking');
+    useTwinState.getState().setMode('thinking');
+    stateBus.emit('mind:thinking_started', { message, timestamp: Date.now() });
   }
 
-  boostPresence(factor: number = 0.2): void { this.presenceIntensity = Math.min(1, this.presenceIntensity + factor); }
-  fadePresence(): void { this.presenceIntensity = Math.max(0, this.presenceIntensity - 0.1); }
-  boostConfidence(amount: number = 5): void { this.confidence = Math.min(100, this.confidence + amount); useTwinState.getState().setConfidence(this.confidence); }
-  reduceConfidence(amount: number = 5): void { this.confidence = Math.max(10, this.confidence - amount); useTwinState.getState().setConfidence(this.confidence); }
-  getPresenceLevel(): PresenceLevel { return this.presenceLevel; }
-  getPresenceIntensity(): number { return this.presenceIntensity; }
-  getAttention(): number { return this.attention; }
-  getFocus(): number { return this.focus; }
-  getConfidence(): number { return this.confidence; }
+  /**
+   * إنهاء التفكير والعودة للاستماع
+   */
+  finishThinking(): void {
+    stateMachine.safeTransition('listening');
+    useTwinState.getState().setMode('listening');
+    stateBus.emit('mind:thinking_finished', { timestamp: Date.now() });
+  }
+
+  /**
+   * الدخول في حالة تحليل عميق
+   */
+  async deepAnalyze(topic: string): Promise<void> {
+    stateMachine.safeTransition('analyzing');
+    useTwinState.getState().setMode('analyzing');
+    await memoryEngine.retrieve(topic, 10);
+  }
+
+  isThinking(): boolean {
+    return this.isProcessing;
+  }
+
+  getThinkingDuration(): number {
+    if (!this.isProcessing) return 0;
+    return Date.now() - this.thinkingStartTime;
+  }
 }
 
 export const mindEngine = new MindEngine();
