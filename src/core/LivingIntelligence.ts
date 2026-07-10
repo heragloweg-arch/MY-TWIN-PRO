@@ -11,6 +11,10 @@ import { growthCoordinator } from '../coordinators/GrowthCoordinator';
 import { selfAwarenessCoordinator } from '../coordinators/SelfAwarenessCoordinator';
 import { goalCoordinator } from '../coordinators/GoalCoordinator';
 import { dailyLifeController } from '../world/DailyLifeController';
+import { soulEvolutionEngine } from '../soul/SoulEvolutionEngine';
+import { livingSession } from './LivingSession';
+import { journeyRecorder } from './JourneyRecorder';
+import { sessionSummary } from './SessionSummary';
 
 interface EmotionalState {
   primaryEmotion: string; intensity: number;
@@ -64,9 +68,14 @@ export class LivingIntelligence {
     await personalityCoordinator.generateDNA(userId);
 
     // ═══════════════════════════════════════════════
-    // ✨ بدء الحياة اليومية
+    // ✨ بدء الحياة اليومية + الجلسة
     // ═══════════════════════════════════════════════
     dailyLifeController.start();
+    identityEngine.buildIdentity();
+    identityEngine.buildLifeGraph();
+    livingSession.start();
+    runtimeHealthMonitor.start();
+    journeyRecorder.start();
 
     this.startRuntimeLoop();
     this.assembleContext();
@@ -75,6 +84,12 @@ export class LivingIntelligence {
 
   stop(): void {
     this.state.isActive = false;
+    sessionSummary.build();
+    soulEvolutionEngine.update();
+    soulEvolutionHistory.recordSnapshot();
+    runtimeHealthMonitor.stop();
+    journeyRecorder.stop();
+    livingSession.end('app_close');
     dailyLifeController.stop();
     if (this.runtimeInterval) { clearInterval(this.runtimeInterval); this.runtimeInterval = null; }
   }

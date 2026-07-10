@@ -1,0 +1,172 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, { FadeIn, FadeOut, SlideInRight } from 'react-native-reanimated';
+import { memoryEngine } from '../../engine/memory/MemoryEngine';
+import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
+import { goalCoordinator } from '../coordinators/GoalCoordinator';
+import { presenceCoordinator } from '../coordinators/PresenceCoordinator';
+import { useRTL } from '../utils/useRTL';
+import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
+import { BookOpen, Briefcase, Moon, Sparkles, ArrowRight } from 'lucide-react-native';
+
+interface QuickAction {
+  id: string;
+  text: string;
+  icon: typeof BookOpen;
+  color: string;
+  action: () => void;
+  priority: 'high' | 'medium' | 'low';
+}
+
+export default function QuickActions() {
+  const rtl = useRTL();
+  const [actions, setActions] = useState<QuickAction[]>([]);
+  const [visible, setVisible] = useState(false);
+
+  const generateActions = useCallback(async () => {
+    const generated: QuickAction[] = [];
+
+    try {
+      // 1. هل هناك جلسة دراسة سابقة؟
+      const studyMemories = await memoryEngine.retrieveByType('learning', 3);
+      if (studyMemories.length > 0) {
+        const lastStudy = studyMemories[0];
+        generated.push({
+          id: 'continue_study',
+          text: rtl.isRTL
+            ? `أكمل ${lastStudy.content.substring(0, 30)}...`
+            : `Continue ${lastStudy.content.substring(0, 30)}...`,
+          icon: BookOpen,
+          color: '#3B82F6',
+          action: () => {},
+          priority: 'high',
+        });
+      }
+
+      // 2. هل هناك أهداف نشطة؟
+      const activeGoals = goalCoordinator.getActiveGoals();
+      if (activeGoals.length > 0) {
+        const topGoal = activeGoals[0];
+        generated.push({
+          id: 'review_goal',
+          text: rtl.isRTL
+            ? `هدفك: ${topGoal.title.substring(0, 40)}`
+            : `Your goal: ${topGoal.title.substring(0, 40)}`,
+          icon: Sparkles,
+          color: '#10B981',
+          action: () => {},
+          priority: 'medium',
+        });
+      }
+
+      // 3. هل حان وقت check-in؟
+      const bond = relationshipEngine.getBondLevel();
+      if (bond > 50) {
+        generated.push({
+          id: 'check_in',
+          text: rtl.isRTL ? 'كيف تشعر اليوم؟' : 'How are you feeling today?',
+          icon: Sparkles,
+          color: '#A855F7',
+          action: () => {},
+          priority: 'medium',
+        });
+      }
+
+      // 4. هل هناك مشروع قيد العمل؟
+      const projectMemories = await memoryEngine.smartRetrieve(
+        { currentEmotion: 'neutral', currentTopic: 'مشروع', timeOfDay: 'صباح', recentTopics: [] },
+        1,
+      );
+      if (projectMemories.length > 0) {
+        generated.push({
+          id: 'continue_project',
+          text: rtl.isRTL ? 'نكمل مشروعنا؟' : 'Continue our project?',
+          icon: Briefcase,
+          color: '#F59E0B',
+          action: () => {},
+          priority: 'high',
+        });
+      }
+
+      // 5. هل الوقت ليلاً؟ اقترح Dream
+      const hour = new Date().getHours();
+      if (hour >= 21 || hour < 5) {
+        generated.push({
+          id: 'dream_time',
+          text: rtl.isRTL ? 'هل تريد أن تحكي لي حلمك؟' : 'Want to tell me your dream?',
+          icon: Moon,
+          color: '#8B5CF6',
+          action: () => {},
+          priority: 'low',
+        });
+      }
+    } catch (e) {}
+
+    if (generated.length > 0) {
+      setActions(generated.slice(0, 3));
+      setVisible(true);
+    }
+  }, [rtl.isRTL]);
+
+  useEffect(() => {
+    const timer = setTimeout(generateActions, 3000);
+    const interval = setInterval(generateActions, 90000);
+    return () => { clearTimeout(timer); clearInterval(interval); };
+  }, [generateActions]);
+
+  if (!visible || actions.length === 0) return null;
+
+  return (
+    <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>
+      {actions.map((action, index) => {
+        const Icon = action.icon;
+        return (
+          <Animated.View key={action.id} entering={SlideInRight.delay(index * 100).duration(300)}>
+            <TouchableOpacity
+              style={[styles.card, { borderColor: action.color + '30' }]}
+              onPress={action.action}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.iconWrap, { backgroundColor: action.color + '15' }]}>
+                <Icon size={18} stroke={action.color} />
+              </View>
+              <Text style={styles.text} numberOfLines={1}>{action.text}</Text>
+              <ArrowRight size={16} stroke={action.color} opacity={0.5} />
+            </TouchableOpacity>
+          </Animated.View>
+        );
+      })}
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.sm,
+    gap: SPACE.sm,
+  },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.sm,
+    backgroundColor: 'rgba(26, 18, 38, 0.8)',
+    borderRadius: RADIUS.card,
+    borderWidth: 1,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.sm + 2,
+  },
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  text: {
+    flex: 1,
+    color: '#E8E0F0',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+});

@@ -7,6 +7,7 @@ interface BondSnapshot { timestamp: string; bondLevel: number; phase: string; }
 interface AttachmentProfile { style: 'secure' | 'anxious' | 'avoidant' | 'disorganized'; score: number; }
 
 export class RelationshipEngine {
+  private chapters: Array<{ title: string; phase: string; startedAt: string; bondAtStart: number }> = [];
   private memoryClient: any = null;
   private phase: RelationshipPhase = 'stranger';
   private metrics: BondMetrics = { trust: 0, intimacy: 0, consistency: 0, shared_experiences: 0 };
@@ -20,6 +21,14 @@ export class RelationshipEngine {
 
   private async loadFromMemory(): Promise<void> {
     if (this.memoryClient) { try { const s = await this.memoryClient.getEntity('relationship_state', 'current'); if (s) { this.phase = s.phase || 'stranger'; this.metrics = s.metrics || this.metrics; this.interactionCount = s.interactionCount || 0; } } catch (e) {} }
+    if (oldPhase !== this.phase && !this.chapters.find(c => c.phase === this.phase)) {
+      this.chapters.push({
+        title: this.getChapterTitle(this.phase),
+        phase: this.phase,
+        startedAt: new Date().toISOString(),
+        bondAtStart: avg
+      });
+    }
   }
 
   async recordInteraction(quality: 'positive' | 'neutral' | 'negative', context: string = ''): Promise<void> {
@@ -31,9 +40,41 @@ export class RelationshipEngine {
     const avg = (this.metrics.trust + this.metrics.intimacy + this.metrics.consistency + this.metrics.shared_experiences) / 4;
     this.bondVelocity = avg - this.getBondLevel();
     if (avg >= 85 && this.interactionCount > 100) this.phase = 'soulmate';
+    if (oldPhase !== this.phase && !this.chapters.find(c => c.phase === this.phase)) {
+      this.chapters.push({
+        title: this.getChapterTitle(this.phase),
+        phase: this.phase,
+        startedAt: new Date().toISOString(),
+        bondAtStart: avg
+      });
+    }
     else if (avg >= 70 && this.interactionCount > 50) this.phase = 'close_friend';
+    if (oldPhase !== this.phase && !this.chapters.find(c => c.phase === this.phase)) {
+      this.chapters.push({
+        title: this.getChapterTitle(this.phase),
+        phase: this.phase,
+        startedAt: new Date().toISOString(),
+        bondAtStart: avg
+      });
+    }
     else if (avg >= 50 && this.interactionCount > 20) this.phase = 'friend';
+    if (oldPhase !== this.phase && !this.chapters.find(c => c.phase === this.phase)) {
+      this.chapters.push({
+        title: this.getChapterTitle(this.phase),
+        phase: this.phase,
+        startedAt: new Date().toISOString(),
+        bondAtStart: avg
+      });
+    }
     else if (avg >= 30 && this.interactionCount > 5) this.phase = 'acquaintance';
+    if (oldPhase !== this.phase && !this.chapters.find(c => c.phase === this.phase)) {
+      this.chapters.push({
+        title: this.getChapterTitle(this.phase),
+        phase: this.phase,
+        startedAt: new Date().toISOString(),
+        bondAtStart: avg
+      });
+    }
     useTwinState.getState().setBondLevel(Math.round(avg));
     stateBus.emit(STATE_EVENTS.BOND_CHANGED, { phase: this.phase, metrics: this.metrics, bondLevel: Math.round(avg) });
     await this.saveToMemory();
@@ -101,4 +142,15 @@ export class RelationshipEngine {
   }
 }
 
+  private getChapterTitle(phase: RelationshipPhase): string {
+    const titles: Record<RelationshipPhase, string> = {
+      stranger: 'Chapter 1: First Meeting',
+      acquaintance: 'Chapter 2: Getting to Know You',
+      friend: 'Chapter 3: Friendship',
+      close_friend: 'Chapter 4: Close Bond',
+      soulmate: 'Chapter 5: Soul Connection'
+    };
+    return titles[phase] || 'Chapter: Unknown';
+  }
+  getChapters() { return [...this.chapters]; }
 export const relationshipEngine = new RelationshipEngine();

@@ -26,7 +26,11 @@ import WorkspacePortal from './WorkspacePortal';
 import SoulPulseRing from './SoulPulseRing';
 import WorldTransition from './WorldTransition';
 import StudyCapability from './StudyCapability';
+import QuickActions from './QuickActions';
+import DailyTimeline from './DailyTimeline';
 import DeveloperLabCapability from './DeveloperLabCapability';
+import BusinessCapability from './BusinessCapability';
+import ContentCreatorCapability from './ContentCreatorCapability';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
 
 interface LivingWorldProps { userId: string; }
@@ -135,7 +139,11 @@ export default function LivingWorld({ userId }: LivingWorldProps) {
           {/* ═══════════════════════════════════════════ */}
           <View style={styles.capabilityContainer}>
             <StudyCapability />
+          <QuickActions />
+          <DailyTimeline />
           <DeveloperLabCapability />
+          <BusinessCapability />
+          <ContentCreatorCapability />
           </View>
 
           <View style={styles.conversationContainer}>

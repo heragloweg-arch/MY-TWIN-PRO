@@ -1,92 +1,78 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing } from 'react-native-reanimated';
 import { relationshipEngine } from '../../../engine/relationship/RelationshipEngine';
 import { stateBus, STATE_EVENTS } from '../../../engine/core/StateBus';
-import { useTwinState } from '../../../engine/core/TwinState';
 
 interface RelationshipAuraProps {
   size?: number;
 }
 
+const PHASE_AURA: Record<string, { color: string; rings: number; pulseSpeed: number; glowIntensity: number }> = {
+  stranger:       { color: '#4B5563', rings: 1, pulseSpeed: 8000, glowIntensity: 0.05 },
+  acquaintance:   { color: '#6366F1', rings: 1, pulseSpeed: 6000, glowIntensity: 0.10 },
+  friend:         { color: '#8B5CF6', rings: 2, pulseSpeed: 4500, glowIntensity: 0.18 },
+  close_friend:   { color: '#A855F7', rings: 2, pulseSpeed: 3500, glowIntensity: 0.28 },
+  soulmate:       { color: '#EC4899', rings: 3, pulseSpeed: 2500, glowIntensity: 0.40 },
+};
+
 export default function RelationshipAura({ size = 200 }: RelationshipAuraProps) {
-  const [bondLevel, setBondLevel] = useState(0);
   const [phase, setPhase] = useState<string>('stranger');
 
-  const opacity = useSharedValue(0.1);
-  const ringScale = useSharedValue(0.8);
-  const colorProgress = useSharedValue(0);
-
-  useEffect(() => {
-    const updateRelationship = () => {
-      const bond = relationshipEngine.getBondLevel();
-      const currentPhase = relationshipEngine.getPhase();
-      setBondLevel(bond);
-      setPhase(currentPhase);
-    };
-
-    updateRelationship();
-    const unsub = stateBus.on(STATE_EVENTS.BOND_CHANGED, updateRelationship);
-    const interval = setInterval(updateRelationship, 5000);
-
-    return () => {
-      unsub();
-      clearInterval(interval);
-    };
-  }, []);
-
-  useEffect(() => {
-    const auraOpacity = 0.08 + (bondLevel / 100) * 0.25;
-    const auraScale = 0.75 + (bondLevel / 100) * 0.4;
-
-    opacity.value = withTiming(auraOpacity, { duration: 2000 });
-    ringScale.value = withTiming(auraScale, { duration: 2000, easing: Easing.inOut(Easing.ease) });
-    colorProgress.value = withTiming(bondLevel / 100, { duration: 2000 });
-  }, [bondLevel]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: ringScale.value }],
-  }));
-
-  const getAuraColor = () => {
-    if (phase === 'soulmate') return '#EC4899';
-    if (phase === 'close_friend') return '#A855F7';
-    if (phase === 'friend') return '#8B5CF6';
-    if (phase === 'acquaintance') return '#6366F1';
-    return '#4B5563';
+  const updatePhase = () => {
+    const currentPhase = relationshipEngine.getPhase();
+    setPhase(currentPhase);
   };
 
-  const auraColor = getAuraColor();
+  useEffect(() => {
+    updatePhase();
+    const unsub = stateBus.on(STATE_EVENTS.BOND_CHANGED, updatePhase);
+    const interval = setInterval(updatePhase, 10000);
+    return () => { unsub(); clearInterval(interval); };
+  }, []);
+
+  const config = PHASE_AURA[phase] || PHASE_AURA.stranger;
+
+  const rings = Array.from({ length: config.rings }).map(() => ({
+    opacity: useSharedValue(0),
+    scale: useSharedValue(0.7),
+  }));
+
+  useEffect(() => {
+    rings.forEach((ring, i) => {
+      ring.opacity.value = withRepeat(
+        withTiming(config.glowIntensity, { duration: config.pulseSpeed, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true,
+      );
+      ring.scale.value = withRepeat(
+        withTiming(1.0 + i * 0.15, { duration: config.pulseSpeed * (1 + i * 0.2), easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true,
+      );
+    });
+  }, [phase]);
 
   return (
     <View style={[styles.container, { width: size, height: size }]} pointerEvents="none">
-      <Animated.View
-        style={[
-          styles.ring,
-          {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            borderColor: auraColor,
-          },
-          animatedStyle,
-        ]}
-      />
-      {phase === 'soulmate' && (
+      {rings.map((ring, i) => (
         <Animated.View
+          key={i}
           style={[
-            styles.outerRing,
+            styles.ring,
             {
-              width: size * 1.3,
-              height: size * 1.3,
-              borderRadius: (size * 1.3) / 2,
-              borderColor: auraColor + '40',
+              width: size * (0.7 + i * 0.25),
+              height: size * (0.7 + i * 0.25),
+              borderRadius: size * (0.7 + i * 0.25) / 2,
+              borderColor: config.color + '60',
             },
-            animatedStyle,
+            useAnimatedStyle(() => ({
+              opacity: ring.opacity.value,
+              transform: [{ scale: ring.scale.value }],
+            })),
           ]}
         />
-      )}
+      ))}
     </View>
   );
 }
@@ -99,10 +85,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   ring: {
-    position: 'absolute',
-    borderWidth: 1.5,
-  },
-  outerRing: {
     position: 'absolute',
     borderWidth: 1,
     borderStyle: 'dashed',

@@ -8,6 +8,8 @@ export { TimelineCoordinator, timelineCoordinator } from './TimelineCoordinator'
 export { SelfAwarenessCoordinator, selfAwarenessCoordinator } from './SelfAwarenessCoordinator';
 export { ContinuityCoordinator, continuityCoordinator } from './ContinuityCoordinator';
 export { ConsciousnessCoordinator, consciousnessCoordinator } from './ConsciousnessCoordinator';
+export { IdentityEngine, identityEngine } from './IdentityEngine';
+export type { TwinRole, IdentityState, LifeGraphNode } from './IdentityEngine';
 export type { Decision, DecisionAction } from './ConsciousnessCoordinator';
 export { CapabilityResolver, capabilityResolver } from './CapabilityResolver';
 export type { CapabilityType } from './CapabilityResolver';

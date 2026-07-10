@@ -41,3 +41,4 @@ export { useColors, getColors, FONTS, SPACING, useAppTheme } from './colors';
 export type { ThemeColors } from './colors';
 export { useLivingTheme } from './living-theme';
 export type { LivingTheme } from './living-theme';
+export type { MemoryType, MemoryAge, MemoryTemperature, MemoryLink, MemoryEntry } from './memory/MemoryEngine';

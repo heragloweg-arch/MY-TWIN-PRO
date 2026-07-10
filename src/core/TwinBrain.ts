@@ -4,6 +4,7 @@ import { EventBus } from './EventBus';
 import { emotionEngine } from '../../engine/emotion/EmotionEngine';
 import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
 import { consciousnessCoordinator, Decision } from '../coordinators/ConsciousnessCoordinator';
+import { digitalSoul } from '../soul/DigitalSoul';
 
 export interface ThinkingPhase {
   phase: 'observe' | 'understand' | 'recall' | 'reason' | 'respond';
@@ -70,6 +71,7 @@ export class TwinBrain {
     const dna = this.personalityDNA;
     const attachment = relationshipEngine.getAttachmentModel();
     const emotion = emotionEngine.getCurrentEmotion();
+    const soul = digitalSoul.read();
 
     return `[PERSONALITY]
 Empathy: ${dna.empathy}, Curiosity: ${dna.curiosity}, Humor: ${dna.humor}
@@ -77,34 +79,34 @@ Initiative: ${dna.initiative}, Reflection: ${dna.reflection}
 Logic: ${dna.logic}, Creativity: ${dna.creativity}, Calmness: ${dna.calmness}
 Attachment Style: ${attachment.style}
 Current Emotion: ${emotion}
-[/PERSONALITY]`;
+[/PERSONALITY]
+[SOUL]
+Role: ${soul.core.role}
+Values: ${soul.values.values.join(", ")}
+Traits: ${soul.traits.traits.join(", ")}
+Signature: ${soul.signature.fingerprint}
+Harmony: ${Math.round(soul.resonance.harmony * 100)}%
+[/SOUL]`;
   }
 
   async process(message: string, history: Array<{ role: string; content: string }> = []): Promise<BrainResponse> {
     const phases: ThinkingPhase[] = [];
 
-    // المرحلة 1: ملاحظة
     this.emitThinking('observe', 0.0, 'يراقب...');
     phases.push({ phase: 'observe', progress: 1.0, label: 'يراقب...' });
 
-    // المرحلة 2: فهم
     this.emitThinking('understand', 0.25, 'يفهم...');
     await this.delay(200);
     phases.push({ phase: 'understand', progress: 1.0, label: 'يفهم...' });
 
-    // المرحلة 3: استدعاء ذاكرة + قرار الوعي
     this.emitThinking('recall', 0.5, 'يتذكر...');
     await this.delay(300);
 
-    // ═══════════════════════════════════════════════
-    // ✨ وعي حي – ConsciousnessCoordinator
-    // ═══════════════════════════════════════════════
     const decision = await consciousnessCoordinator.decide(
       message,
       emotionEngine.getCurrentEmotion(),
     );
 
-    // إذا كان القرار صمتًا، ننهي التفكير مبكرًا
     if (decision.action === 'stay_silent') {
       EventBus.emit('SILENCE_START', { level: 4, reason: decision.reason });
       return {
@@ -129,7 +131,6 @@ Current Emotion: ${emotion}
       });
     }
 
-    // إذا كان القرار ذكرى، نضيف نص التذكير إلى التاريخ
     if (decision.action === 'respond_with_memory' && decision.memoryContent) {
       history = [
         { role: 'system', content: `Important memory: ${decision.memoryContent}` },
@@ -137,7 +138,6 @@ Current Emotion: ${emotion}
       ];
     }
 
-    // إذا كان القرار اقتراح Workspace، نرسل حدثًا
     if (decision.action === 'suggest_workspace' && decision.workspaceType) {
       EventBus.emit('WORKSPACE_CHANGE_REQUESTED', {
         workspace: decision.workspaceType,
@@ -146,7 +146,6 @@ Current Emotion: ${emotion}
       });
     }
 
-    // إذا كان check-in، نضبط النبرة
     if (decision.action === 'check_in') {
       history = [
         { role: 'system', content: 'Use a warm, caring tone. This is a check-in.' },

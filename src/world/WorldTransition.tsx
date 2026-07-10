@@ -19,11 +19,14 @@ const WORLD_TRANSITIONS: Record<WorldState, TransitionConfig> = {
   default:  { color: '#0A0A14', duration: 600, label: 'الرئيسية' },
   study:    { color: '#080A18', duration: 700, label: 'عالم الدراسة' },
   business: { color: '#100A08', duration: 600, label: 'عالم الأعمال' },
+  content_creator: { color: '#0F0A14', duration: 650, label: 'Creative Studio' },
   dream:    { color: '#0A0818', duration: 900, label: 'عالم الأحلام' },
   creative: { color: '#100818', duration: 700, label: 'عالم الإبداع' },
   life:     { color: '#081810', duration: 800, label: 'عالم الحياة' },
   code:     { color: '#080C18', duration: 600, label: 'عالم البرمجة' },
   code_lab: { color: '#060A0E', duration: 600, label: 'Developer Lab' },
+  business:  { color: '#0A0A0A', duration: 700, label: 'عالم الأعمال' },
+  content_creator: { color: '#0F0A14', duration: 650, label: 'Creative Studio' },
 };
 
 export default function WorldTransition({ children }: { children: React.ReactNode }) {
