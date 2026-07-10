@@ -1,9 +1,3 @@
-/**
- * VOICE CALL MANAGER v1.0 – مدير المكالمات الصوتية
- * =====================================================
- * يدير جلسات المكالمات الصوتية الكاملة:
- * بدء ← استماع ← معالجة ← توليد رد ← تحدث ← استماع...
- */
 import { stateBus } from '../core/StateBus';
 import { useTwinState } from '../core/TwinState';
 import { voiceSynthesizer } from './VoiceSynthesizer';
@@ -15,14 +9,11 @@ type CallState = 'idle' | 'listening' | 'processing' | 'speaking';
 export class VoiceCallManager {
   private state: CallState = 'idle';
   private sttApiKey: string = '';
+  private fadeOutDuration: number = 300; // ms for fade out
 
   setSTTKey(key: string): void { this.sttApiKey = key; }
-
   getState(): CallState { return this.state; }
 
-  /**
-   * بدء المكالمة – التوأم يتحدث أولاً
-   */
   async startCall(greeting: string = 'أهلاً، أنا هنا للاستماع إليك.'): Promise<string | null> {
     this.state = 'speaking';
     useTwinState.getState().startSpeaking();
@@ -35,18 +26,13 @@ export class VoiceCallManager {
     return audio;
   }
 
-  /**
-   * استقبال كلام المستخدم (بعد تحويله لنص)
-   */
   async onUserSpeech(text: string, emotion: Emotion = 'neutral'): Promise<{ text: string; audio: string | null } | null> {
     this.state = 'processing';
     useTwinState.getState().setIsListening(false);
     useTwinState.getState().setMode('thinking');
     stateBus.emit('voice:processing', { text });
 
-    // محاكاة معالجة (في الواقع يتم استدعاء chat API)
     await new Promise(r => setTimeout(r, 800));
-
     const reply = `أفهم ما تقول: "${text}". دعني أفكر في الرد المناسب.`;
 
     this.state = 'speaking';
@@ -63,9 +49,27 @@ export class VoiceCallManager {
     return { text: reply, audio };
   }
 
-  /**
-   * إنهاء المكالمة
-   */
+  /** مقاطعة مع تلاشي تدريجي */
+  interrupt(): void {
+    if (this.state === 'speaking') {
+      // إصدار حدث Fade Out
+      stateBus.emit('voice:fade_out', { duration: this.fadeOutDuration });
+      // إيقاف بعد مدة التلاشي
+      setTimeout(() => {
+        this.queue = [];
+        this.isSpeaking = false;
+        useTwinState.getState().stopSpeaking();
+      }, this.fadeOutDuration);
+    } else {
+      this.queue = [];
+      this.isSpeaking = false;
+      useTwinState.getState().stopSpeaking();
+    }
+    this.state = 'listening';
+    useTwinState.getState().setIsListening(true);
+    stateBus.emit('voice:listening_started', {});
+  }
+
   endCall(): void {
     this.state = 'idle';
     useTwinState.getState().stopSpeaking();
@@ -73,9 +77,6 @@ export class VoiceCallManager {
     stateBus.emit('voice:call_ended', {});
   }
 
-  /**
-   * تحويل الصوت إلى نص (STT)
-   */
   async transcribe(audioBase64: string): Promise<string> {
     try {
       if (this.sttApiKey) {
@@ -90,6 +91,10 @@ export class VoiceCallManager {
     } catch (e) {}
     return '';
   }
+
+  // إضافة خصائص مفقودة
+  private queue: any[] = [];
+  private isSpeaking: boolean = false;
 }
 
 export const voiceCallManager = new VoiceCallManager();

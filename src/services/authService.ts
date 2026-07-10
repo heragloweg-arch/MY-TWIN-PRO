@@ -1,9 +1,9 @@
 import { apiPost, apiGet } from '../../lib/httpClient';
 import { googleLogin } from '../../lib/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { securityService } from './SecurityService';
 
 const KEYS = {
-  TOKEN: 'mytwin-token',
   USER: 'mytwin-user',
   DEVICE_TRUSTED: 'mytwin-device-trusted',
   LAST_SESSION: 'mytwin-last-session',
@@ -29,7 +29,8 @@ export class AuthService {
   async login(email: string, password: string): Promise<AuthResult> {
     const data = await apiPost('/api/auth/login', { email: email.trim(), password });
     if (data?.token && data?.user_id) {
-      await this.saveAuthData(data.token, data.user_id);
+      await securityService.storeToken(data.token);
+      await AsyncStorage.setItem(KEYS.USER, data.user_id);
       return { token: data.token, user_id: data.user_id, onboarded: data.onboarded || false, isNewUser: false };
     }
     throw new Error('فشل تسجيل الدخول');
@@ -38,7 +39,8 @@ export class AuthService {
   async signup(email: string, password: string, twinName: string = 'توأمك', lang: string = 'ar'): Promise<AuthResult> {
     const data = await apiPost('/api/auth/signup', { email: email.trim(), password, twin_name: twinName, lang });
     if (data?.token && data?.user_id) {
-      await this.saveAuthData(data.token, data.user_id);
+      await securityService.storeToken(data.token);
+      await AsyncStorage.setItem(KEYS.USER, data.user_id);
       return { token: data.token, user_id: data.user_id, onboarded: false, twin_name: twinName, isNewUser: true };
     }
     throw new Error('فشل إنشاء الحساب');
@@ -47,7 +49,8 @@ export class AuthService {
   async loginWithGoogle(lang: string = 'ar'): Promise<AuthResult> {
     const data = await googleLogin(lang);
     if (data?.token && data?.user_id) {
-      await this.saveAuthData(data.token, data.user_id);
+      await securityService.storeToken(data.token);
+      await AsyncStorage.setItem(KEYS.USER, data.user_id);
       return { token: data.token, user_id: data.user_id, onboarded: data.onboarded || false, isNewUser: !data.onboarded };
     }
     throw new Error('فشل تسجيل الدخول بـ Google');
@@ -58,12 +61,18 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
-    await AsyncStorage.multiRemove([KEYS.TOKEN, KEYS.USER, KEYS.LAST_SESSION]);
+    await securityService.clearAll();
+    await AsyncStorage.multiRemove([KEYS.USER, KEYS.LAST_SESSION]);
   }
 
   async isAuthenticated(): Promise<boolean> {
-    const token = await AsyncStorage.getItem(KEYS.TOKEN);
-    return !!token;
+    const token = await securityService.getToken();
+    if (!token) return false;
+    if (securityService.isTokenExpired(token)) {
+      const refreshed = await securityService.refreshAuthToken();
+      return refreshed;
+    }
+    return true;
   }
 
   async getUserId(): Promise<string | null> {
@@ -71,11 +80,15 @@ export class AuthService {
   }
 
   async checkSessionRestore(): Promise<SessionRestoreResult> {
-    const token = await AsyncStorage.getItem(KEYS.TOKEN);
+    const token = await securityService.getToken();
     const userId = await AsyncStorage.getItem(KEYS.USER);
     const lastSession = await AsyncStorage.getItem(KEYS.LAST_SESSION);
 
     if (token && userId) {
+      if (securityService.isTokenExpired(token)) {
+        const refreshed = await securityService.refreshAuthToken();
+        if (!refreshed) return { canRestore: false, reason: 'token_expired' };
+      }
       try {
         const data = await apiGet(`/api/auth/verify-token?user_id=${userId}`);
         if (data?.valid) {
@@ -98,11 +111,6 @@ export class AuthService {
 
   async saveLastSession(sessionId: string): Promise<void> {
     await AsyncStorage.setItem(KEYS.LAST_SESSION, sessionId);
-  }
-
-  private async saveAuthData(token: string, userId: string): Promise<void> {
-    await AsyncStorage.setItem(KEYS.TOKEN, token);
-    await AsyncStorage.setItem(KEYS.USER, userId);
   }
 }
 

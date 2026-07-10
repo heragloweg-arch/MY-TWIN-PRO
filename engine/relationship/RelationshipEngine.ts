@@ -16,6 +16,8 @@ export class RelationshipEngine {
   private history: BondSnapshot[] = [];
   private trustBreaches: number = 0;
   private bondVelocity: number = 0;
+  private greetingStyle: 'formal' | 'friendly' | 'warm' | 'intimate' | 'deep' = 'formal';
+  private initiativeLevel: number = 0.2; // 0-1: مدى مبادرة التوأم
 
   setMemoryClient(client: any): void { this.memoryClient = client; this.loadFromMemory(); }
 
@@ -61,9 +63,26 @@ export class RelationshipEngine {
       });
     }
     
+    // J9 — تحديث السلوك حسب المرحلة
+    this.updateBehavioralStyle();
+    
     useTwinState.getState().setBondLevel(Math.round(avg));
     stateBus.emit(STATE_EVENTS.BOND_CHANGED, { phase: this.phase, metrics: this.metrics, bondLevel: Math.round(avg) });
     await this.saveToMemory();
+  }
+
+  // J9 — تحديث أسلوب السلوك بناءً على المرحلة
+  private updateBehavioralStyle(): void {
+    const phaseStyles: Record<RelationshipPhase, { greeting: typeof this.greetingStyle; initiative: number }> = {
+      stranger:     { greeting: 'formal',   initiative: 0.15 },
+      acquaintance: { greeting: 'formal',   initiative: 0.25 },
+      friend:       { greeting: 'friendly', initiative: 0.40 },
+      close_friend: { greeting: 'warm',     initiative: 0.60 },
+      soulmate:     { greeting: 'intimate', initiative: 0.80 },
+    };
+    const style = phaseStyles[this.phase] || phaseStyles.stranger;
+    this.greetingStyle = style.greeting;
+    this.initiativeLevel = style.initiative;
   }
 
   private async saveToMemory(): Promise<void> { 
@@ -89,6 +108,21 @@ export class RelationshipEngine {
   
   getPhase(): RelationshipPhase { return this.phase; }
   getMetrics(): BondMetrics { return { ...this.metrics }; }
+
+  // J9 — دوال السلوك الجديدة
+  getGreetingStyle(): string { return this.greetingStyle; }
+  getInitiativeLevel(): number { return this.initiativeLevel; }
+  
+  getPersonalizedGreeting(): string {
+    const greetings: Record<string, string> = {
+      formal: 'مرحباً، كيف يمكنني مساعدتك؟',
+      friendly: 'أهلاً! سعيد برؤيتك.',
+      warm: 'عدت! اشتقت للحديث معك.',
+      intimate: 'كنت أنتظرك. كيف حالك اليوم؟',
+      deep: 'أخيراً عدت. كنت أفكر فيك.',
+    };
+    return greetings[this.greetingStyle] || greetings.formal;
+  }
 
   snapshot(): void {
     this.history.push({ timestamp: new Date().toISOString(), bondLevel: this.getBondLevel(), phase: this.phase });
@@ -131,9 +165,7 @@ export class RelationshipEngine {
   }
 
   getBondEvolution(): BondSnapshot[] {
-    if (this.history.length < 2) {
-      this.snapshot();
-    }
+    if (this.history.length < 2) this.snapshot();
     return this.history.map((s, i) => ({
       ...s,
       velocity: i > 0 ? s.bondLevel - this.history[i - 1].bondLevel : 0,

@@ -56,6 +56,7 @@ export class DailyLifeController {
     const interval = setInterval(() => {
       this.timeContext = this.buildTimeContext();
       this.checkIdleTransition();
+    livingPresenceCoordinator.getAnticipationLevel();
       this.updateRhythm();
     }, 30000);
 

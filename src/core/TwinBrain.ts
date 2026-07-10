@@ -24,14 +24,8 @@ export interface BrainResponse {
 }
 
 export interface PersonalityDNA {
-  empathy: number;
-  curiosity: number;
-  humor: number;
-  initiative: number;
-  reflection: number;
-  logic: number;
-  creativity: number;
-  calmness: number;
+  empathy: number; curiosity: number; humor: number; initiative: number;
+  reflection: number; logic: number; creativity: number; calmness: number;
 }
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -55,24 +49,15 @@ export class TwinBrain {
     this.lang = lang;
   }
 
-  onThinking(callback: (phase: ThinkingPhase) => void): void {
-    this.onThinkingUpdate = callback;
-  }
-
-  setPersonalityDNA(dna: Partial<PersonalityDNA>): void {
-    this.personalityDNA = { ...this.personalityDNA, ...dna };
-  }
-
-  getPersonalityDNA(): PersonalityDNA {
-    return { ...this.personalityDNA };
-  }
+  onThinking(callback: (phase: ThinkingPhase) => void): void { this.onThinkingUpdate = callback; }
+  setPersonalityDNA(dna: Partial<PersonalityDNA>): void { this.personalityDNA = { ...this.personalityDNA, ...dna }; }
+  getPersonalityDNA(): PersonalityDNA { return { ...this.personalityDNA }; }
 
   private buildPersonalityContext(): string {
     const dna = this.personalityDNA;
     const attachment = relationshipEngine.getAttachmentModel();
     const emotion = emotionEngine.getCurrentEmotion();
     const soul = digitalSoul.read();
-
     return `[PERSONALITY]
 Empathy: ${dna.empathy}, Curiosity: ${dna.curiosity}, Humor: ${dna.humor}
 Initiative: ${dna.initiative}, Reflection: ${dna.reflection}
@@ -91,38 +76,34 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
 
   async process(message: string, history: Array<{ role: string; content: string }> = []): Promise<BrainResponse> {
     const phases: ThinkingPhase[] = [];
+    const emotion = emotionEngine.getCurrentEmotion();
+    const intensity = emotionEngine.getIntensity();
+    const decision = await consciousnessCoordinator.decide(message, emotion);
+
+    // J1 — توقيت متغير حسب السياق العاطفي
+    const timingDelays = this.calculateContextualTiming(emotion, intensity, decision);
 
     this.emitThinking('observe', 0.0, 'يراقب...');
+    await this.delay(timingDelays.observe);
     phases.push({ phase: 'observe', progress: 1.0, label: 'يراقب...' });
 
     this.emitThinking('understand', 0.25, 'يفهم...');
-    await this.delay(200);
+    await this.delay(timingDelays.understand);
     phases.push({ phase: 'understand', progress: 1.0, label: 'يفهم...' });
 
     this.emitThinking('recall', 0.5, 'يتذكر...');
-    await this.delay(300);
-
-    const decision = await consciousnessCoordinator.decide(
-      message,
-      emotionEngine.getCurrentEmotion(),
-    );
+    await this.delay(timingDelays.recall);
 
     if (decision.action === 'stay_silent') {
       EventBus.emit('SILENCE_START', { level: 4, reason: decision.reason });
       return {
-        reply: '',
-        provider: 'consciousness',
-        emotion: 'neutral',
+        reply: '', provider: 'consciousness', emotion: 'neutral',
         thinkingPhases: [{ phase: 'respond', progress: 1.0, label: 'صامت' }],
-        memoryStored: false,
-        relationshipDelta: 0,
-        contextUsed: null,
-        decision,
+        memoryStored: false, relationshipDelta: 0, contextUsed: null, decision,
       };
     }
 
     phases.push({ phase: 'recall', progress: 1.0, label: 'يتذكر...' });
-
     const context = livingIntelligence.getLastContext();
     if (context?.memory?.recentMessages && context.memory.recentMessages.length > 0) {
       EventBus.emit('MEMORY_SURFACED', {
@@ -132,33 +113,19 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
     }
 
     if (decision.action === 'respond_with_memory' && decision.memoryContent) {
-      history = [
-        { role: 'system', content: `Important memory: ${decision.memoryContent}` },
-        ...history,
-      ];
+      history = [{ role: 'system', content: `Important memory: ${decision.memoryContent}` }, ...history];
     }
-
     if (decision.action === 'suggest_workspace' && decision.workspaceType) {
-      EventBus.emit('WORKSPACE_CHANGE_REQUESTED', {
-        workspace: decision.workspaceType,
-        confidence: 0.85,
-        trigger: 'consciousness',
-      });
+      EventBus.emit('WORKSPACE_CHANGE_REQUESTED', { workspace: decision.workspaceType, confidence: 0.85, trigger: 'consciousness' });
     }
-
     if (decision.action === 'check_in') {
-      history = [
-        { role: 'system', content: 'Use a warm, caring tone. This is a check-in.' },
-        ...history,
-      ];
+      history = [{ role: 'system', content: 'Use a warm, caring tone. This is a check-in.' }, ...history];
     }
 
     this.emitThinking('reason', 0.75, 'يفكر...');
+    await this.delay(timingDelays.reason);
 
-    const personalityContext = this.buildPersonalityContext();
-    const enrichedHistory = [...history];
-    enrichedHistory.unshift({ role: 'system', content: personalityContext });
-
+    const enrichedHistory = [history[0], { role: 'system', content: this.buildPersonalityContext() }, ...history.slice(1)];
     let result: { reply: string; provider: string; contextUsed: AssembledContext; relationshipDelta: number };
     try {
       result = await livingIntelligence.processMessage(message, enrichedHistory);
@@ -171,24 +138,18 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
     phases.push({ phase: 'respond', progress: 1.0, label: 'يستجيب...' });
 
     return {
-      reply: result.reply,
-      provider: result.provider,
+      reply: result.reply, provider: result.provider,
       emotion: result.contextUsed.emotion.primaryEmotion,
-      thinkingPhases: phases,
-      memoryStored: true,
+      thinkingPhases: phases, memoryStored: true,
       relationshipDelta: result.relationshipDelta,
-      contextUsed: result.contextUsed,
-      decision,
+      contextUsed: result.contextUsed, decision,
     };
   }
 
   async streamProcess(message: string, onToken: (token: string) => void, onDone: () => void, onError: (err: string) => void): Promise<void> {
-    this.emitThinking('observe', 0.0, 'يراقب...');
-    await this.delay(100);
-    this.emitThinking('understand', 0.25, 'يفهم...');
-    await this.delay(150);
+    this.emitThinking('observe', 0.0, 'يراقب...'); await this.delay(100);
+    this.emitThinking('understand', 0.25, 'يفهم...'); await this.delay(150);
     this.emitThinking('recall', 0.5, 'يتذكر...');
-
     const context = livingIntelligence.getLastContext();
     if (context?.memory?.recentMessages && context.memory.recentMessages.length > 0) {
       EventBus.emit('MEMORY_SURFACED', {
@@ -196,14 +157,9 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
         color: EMOTION_COLORS[context.emotion.primaryEmotion] || '#A855F7',
       });
     }
-
     await this.delay(200);
     this.emitThinking('reason', 0.75, 'يفكر...');
-
-    streamMessage(message, (token: string) => onToken(token), () => {
-      this.emitThinking('respond', 1.0, 'يستجيب...');
-      onDone();
-    }, (err: string) => onError(err), this.lang);
+    streamMessage(message, onToken, onDone, onError, this.lang);
   }
 
   setUserId(userId: string): void { this.userId = userId; livingIntelligence.setUserId(userId); }
@@ -214,6 +170,27 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
   }
 
   private delay(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  // J1 — التوقيت المتغير حسب السياق
+  private calculateContextualTiming(emotion: string, intensity: number, decision: Decision) {
+    let base = 250;
+    // المشاعر الثقيلة = أبطأ
+    if (emotion === 'sadness' || emotion === 'fear') base = 400;
+    if (emotion === 'anger') base = 300;
+    if (emotion === 'joy') base = 200;
+    // الشدة الأعلى = أبطأ
+    base += intensity * 150;
+    // الصمت = أبطأ
+    if (decision.action === 'stay_silent') base += 300;
+
+    return {
+      observe: base * 0.8,
+      understand: base * 1.0,
+      recall: base * 1.2,
+      reason: base * 1.5,
+      respond: base * 0.6,
+    };
+  }
 }
 
 export const twinBrain = new TwinBrain();

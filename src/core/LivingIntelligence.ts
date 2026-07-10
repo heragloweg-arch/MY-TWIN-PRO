@@ -11,6 +11,13 @@ import { growthCoordinator } from '../coordinators/GrowthCoordinator';
 import { selfAwarenessCoordinator } from '../coordinators/SelfAwarenessCoordinator';
 import { goalCoordinator } from '../coordinators/GoalCoordinator';
 import { dailyLifeController } from '../world/DailyLifeController';
+import { universalNavigator } from './UniversalNavigator';
+import { globalPresence } from './GlobalPresence';
+import { livingNotifications } from './LivingNotifications';
+import { launchPolish } from './LaunchPolish';
+import { livingPresenceCoordinator } from './LivingPresenceCoordinator';
+import { LivingAnalytics } from './LivingAnalytics';
+import { CrashReporting } from './CrashReporting';
 import { soulEvolutionEngine } from '../soul/SoulEvolutionEngine';
 import { livingSession } from './LivingSession';
 import { journeyRecorder } from './JourneyRecorder';
@@ -71,6 +78,16 @@ export class LivingIntelligence {
     // ✨ بدء الحياة اليومية + الجلسة
     // ═══════════════════════════════════════════════
     dailyLifeController.start();
+    universalNavigator.navigateTo('living_world');
+    globalPresence.setPresenceFor('living_world');
+    livingNotifications.start();
+    livingPresenceCoordinator.startCuriosity();
+    new LivingAnalytics(); // تفعيل التحليلات الحية
+    livingPresenceCoordinator.startUnifiedBreathing();
+    livingPresenceCoordinator.startIdlePresence();
+    longTermEvolution.start();
+    launchPolish.apply();
+    conversationModeController.setMode('silent'); // الوضع الافتراضي
     identityEngine.buildIdentity();
     identityEngine.buildLifeGraph();
     livingSession.start();
@@ -91,6 +108,9 @@ export class LivingIntelligence {
     journeyRecorder.stop();
     livingSession.end('app_close');
     dailyLifeController.stop();
+    livingNotifications.stop();
+    livingPresenceCoordinator.stop();
+    longTermEvolution.stop();
     if (this.runtimeInterval) { clearInterval(this.runtimeInterval); this.runtimeInterval = null; }
   }
 
@@ -106,6 +126,7 @@ export class LivingIntelligence {
 
     let chatResult: ChatResponse;
     try {
+      CrashReporting.captureException(error as Error, { userId: this.userId });
       chatResult = await sendMessage(message, enrichedHistory, this.lang, this.userId);
     } catch (error) {
       throw new Error('فشل الاتصال بالعقل المركزي');
@@ -137,9 +158,13 @@ export class LivingIntelligence {
     };
     if (!this.userId) return context;
     try { const ts = await getTwinState(this.userId, this.lang); context.twinState = ts; if (ts) { context.emotion.primaryEmotion = ts.mood; this.state.energyLevel = ts.energy_level; } } catch (e) {}
+      CrashReporting.captureException(error as Error, { userId: this.userId });
     try { const health = await getRelationshipHealth(this.userId); if (health) { context.relationship = { ...context.relationship, trust: health.trust_level || 50, trend: health.trend || 'stable' }; } } catch (e) {}
+      CrashReporting.captureException(error as Error, { userId: this.userId });
     try { const insights = await getRelationshipInsights(this.userId); if (insights?.insights) { context.memory.insights = insights.insights; } } catch (e) {}
+      CrashReporting.captureException(error as Error, { userId: this.userId });
     try { const memories = await getRecentMemories(this.userId, 5); if (memories?.data) { context.memory.recentMessages = memories.data.slice(0, 5).map((m: any) => ({ role: m.role || 'user', content: m.content || '' })); } } catch (e) {}
+      CrashReporting.captureException(error as Error, { userId: this.userId });
     this.state.currentContext = context;
     EventBus.emit('EMOTIONAL_STATE_CHANGED', { emotion: context.emotion.primaryEmotion, intensity: context.emotion.intensity, valence: context.emotion.valence, confidence: context.emotion.confidence });
     return context;
@@ -181,14 +206,18 @@ export class LivingIntelligence {
   private async updateMemory(userMessage: string, twinReply: string, context: AssembledContext): Promise<void> {
     if (!this.userId) return;
     try { await storeMemory(this.userId, userMessage, 'conversation', 50); } catch (e) {}
+      CrashReporting.captureException(error as Error, { userId: this.userId });
     try { await storeMemory(this.userId, twinReply.substring(0, 200), 'conversation', 40); } catch (e) {}
+      CrashReporting.captureException(error as Error, { userId: this.userId });
     if (context.emotion.intensity > 0.7) { try { await storeMemory(this.userId, userMessage, 'emotion', 70); } catch (e) {} }
+      CrashReporting.captureException(error as Error, { userId: this.userId });
   }
 
   private async updateRelationship(context: AssembledContext): Promise<number> {
     const effects: Record<string, number> = { joy: 2, sadness: 3, fear: 2, anger: -1, love: 3, neutral: 1 };
     const delta = effects[context.emotion.primaryEmotion] || effects.neutral || 1;
     try { await getRelationshipHealth(this.userId); } catch (e) {}
+      CrashReporting.captureException(error as Error, { userId: this.userId });
     return delta;
   }
 
