@@ -4,24 +4,23 @@
     "slug": "my-twin",
     "owner": "soulsync.c",
     "version": "1.0.0",
+    "runtimeVersion": { "policy": "sdkVersion" },
     "orientation": "portrait",
-    "icon": "./assets/brand/icon.png",
     "scheme": "mytwin",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/brand/icon.png",
     "splash": {
       "image": "./assets/splash/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#0A0014"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.soulsync.mytwin",
       "buildNumber": "1",
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "يحتاج التوأم إلى الميكروفون ليستمع إليك عندما تتحدث.",
+        "NSMicrophoneUsageDescription": "يحتاج التوأم إلى الميكروفون ليستمع إليك.",
         "NSSpeechRecognitionUsageDescription": "يستخدم التوأم التعرف على الصوت لتحويل كلامك إلى نص."
       }
     },
@@ -33,23 +32,30 @@
       "package": "com.soulsync.mytwin",
       "versionCode": 1,
       "permissions": [
-        "INTERNET",
-        "ACCESS_NETWORK_STATE",
-        "RECORD_AUDIO",
-        "VIBRATE"
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.VIBRATE",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS",
+        "com.android.vending.BILLING"
       ]
     },
     "plugins": [
+      "expo-router",
       "expo-localization",
       [
         "expo-build-properties",
         {
           "android": {
-            "compileSdkVersion": 34,
-            "targetSdkVersion": 34,
-            "minSdkVersion": 24
+            "newArchEnabled": false,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "minSdkVersion": 24,
+            "kotlinVersion": "1.9.24"
           },
           "ios": {
+            "newArchEnabled": false,
             "deploymentTarget": "15.0"
           }
         }
@@ -57,33 +63,24 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx",
-          "iosAppId": "ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx",
-          "userTrackingUsageDescription": "يستخدم هذا المعرف لتقديم إعلانات مخصصة.",
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
           "delayAppMeasurement": true
         }
       ],
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/splash/splash.png",
-          "resizeMode": "contain",
-          "backgroundColor": "#0A0014",
-          "dark": {
-            "image": "./assets/splash/splash.png",
-            "backgroundColor": "#0A0014"
-          }
-        }
-      ]
+      "./plugins/withGooglePlayBilling"
     ],
     "extra": {
+      "router": { "origin": false },
       "eas": {
         "projectId": "6cb78668-322b-476f-ab25-4136d85f8d68"
       },
-      "REWARDED_AD_UNIT_ID_ANDROID": "ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx",
-      "REWARDED_AD_UNIT_ID_IOS": "ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx",
       "API_URL": "https://my-twin-pro-production-b744.up.railway.app",
       "ENVIRONMENT": "production"
-    }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6cb78668-322b-476f-ab25-4136d85f8d68"
+    },
+    "sdkVersion": "52.0.0"
   }
 }
