@@ -19,6 +19,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.soulsync.mytwin",
+      "buildNumber": "1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "يحتاج التوأم إلى الميكروفون ليستمع إليك عندما تتحدث.",
         "NSSpeechRecognitionUsageDescription": "يستخدم التوأم التعرف على الصوت لتحويل كلامك إلى نص."
@@ -30,6 +31,7 @@
         "backgroundColor": "#0A0014"
       },
       "package": "com.soulsync.mytwin",
+      "versionCode": 1,
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
@@ -59,6 +61,18 @@
           "iosAppId": "ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx",
           "userTrackingUsageDescription": "يستخدم هذا المعرف لتقديم إعلانات مخصصة.",
           "delayAppMeasurement": true
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0A0014",
+          "dark": {
+            "image": "./assets/splash/splash.png",
+            "backgroundColor": "#0A0014"
+          }
         }
       ]
     ],
