@@ -4,7 +4,8 @@ import { useTwinStore } from '../../../store/useTwinStore';
 import { useRTL } from '../../utils/useRTL';
 import { SPACE, RADIUS } from '../../../src/design/tokens/spacing';
 import { referralService, ReferralStats } from '../../services/ReferralService';
-import { Gift, Copy, Share2, Users, Star, ActivityIndicator } from 'lucide-react-native';
+import { Gift, Copy, Share2, Users, Star } from 'lucide-react-native';
+import { ActivityIndicator } from 'react-native';
 
 const CONTENT = {
   ar: {

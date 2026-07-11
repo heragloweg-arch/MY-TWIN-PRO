@@ -5,6 +5,7 @@ import { EventBus } from '../core/EventBus';
 import { memoryEngine } from '../../engine/memory/MemoryEngine';
 import { capabilityResolver } from '../coordinators/CapabilityResolver';
 import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
+import { economyEngine } from '../services/EconomyEngine';
 import { useRTL } from '../../lib/useRTL';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
 import { BookOpen, Target, Brain, ChevronRight, Clock } from 'lucide-react-native';
@@ -49,15 +50,25 @@ export default function StudyCapability() {
     if (!currentTopic.trim()) return;
     const newTopic: StudyTopic = { id: Date.now().toString(), title: currentTopic.trim(), progress: 0, lastStudied: new Date().toISOString() };
     setTopics(prev => [newTopic, ...prev]);
-    try { await memoryEngine.store('learning', currentTopic.trim(), 60, 'focused', ['study']); } catch (e) {}
+    try {
+      await memoryEngine.store('learning', currentTopic.trim(), 60, 'focused', ['study']);
+      await memoryEngine.storeLongTerm('study_topic', currentTopic.trim(), 65, 'study');
+    } catch (e) {}
     setCurrentTopic('');
+    
+    // 🆕 مكافأة Soul Points
+    economyEngine.rewardStudySession();
+    
     EventBus.emit('STUDY_TOPIC_ADDED', { topic: newTopic });
   };
 
   useEffect(() => {
     if (!active) return;
     const timer = setTimeout(async () => {
-      const decision = await consciousnessCoordinator.decide('study', 'focused');
+      const decision = await consciousnessCoordinator.decide(
+        rtl.isRTL ? 'أريد أن أدرس' : 'I want to study',
+        'focused'
+      );
       if (decision.action === 'check_in') {
         EventBus.emit('TWIN_SPEAK', { phrase: rtl.isRTL ? 'هل نكمل ما بدأناه؟' : 'Shall we continue where we left off?', tone: 'gentle' });
       }
@@ -89,7 +100,6 @@ export default function StudyCapability() {
         </TouchableOpacity>
       </View>
 
-      {/* آخر موضوع — استعادة السياق */}
       {lastTopic && (
         <View style={styles.lastTopicCard}>
           <Brain size={16} stroke="#3B82F6" />

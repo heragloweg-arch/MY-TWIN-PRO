@@ -14,7 +14,7 @@ import { useColors } from './colors';
 import type { ThemeColors } from './colors';
 
 // ── إعدادات الحركة لكل حالة وعي ──
-interface MotionConfig {
+export interface MotionConfig {
   breathDuration: number;
   pulseDuration: number;
   thinkingDuration: number;
@@ -23,7 +23,7 @@ interface MotionConfig {
 }
 
 // ── إعدادات التوهج لكل حالة ──
-interface GlowConfig {
+export interface GlowConfig {
   color: string;
   intensity: number;
   speed: number;
@@ -31,14 +31,14 @@ interface GlowConfig {
 }
 
 // ── إعدادات الزجاج لكل حالة ──
-interface GlassConfig {
+export interface GlassConfig {
   opacity: number;
   blur: number;
   borderOpacity: number;
 }
 
 // ── ألوان حية مرتبطة بالحالة ──
-interface LivingColors {
+export interface LivingColors {
   breathingGlow: string;
   neuron: string;
   memory: string;

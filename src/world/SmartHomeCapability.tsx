@@ -5,6 +5,7 @@ import { EventBus } from '../core/EventBus';
 import { memoryEngine } from '../../engine/memory/MemoryEngine';
 import { capabilityResolver } from '../coordinators/CapabilityResolver';
 import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
+import { economyEngine } from '../services/EconomyEngine';
 import { sendMessage } from '../services/twinApi';
 import { useRTL } from '../../lib/useRTL';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
@@ -68,7 +69,13 @@ export default function SmartHomeCapability() {
       setSessions(prev => [newSession, ...prev.slice(0, 9)]);
       setLastResponse(reply);
 
-      try { await memoryEngine.store('decision', inputText.trim(), 50, 'neutral', ['smart_home', actionType]); } catch (e) {}
+      try {
+        await memoryEngine.store('decision', inputText.trim(), 50, 'neutral', ['smart_home', actionType]);
+        await memoryEngine.storeLongTerm('smart_home_command', inputText.trim(), 50, 'smart_home');
+      } catch (e) {}
+
+      // 🆕 مكافأة Soul Points
+      economyEngine.addPoints('study_session', 5, 'أمر منزل ذكي');
     } catch (e) {
       setLastResponse(rtl.isRTL ? 'حدث خطأ.' : 'An error occurred.');
     } finally {
@@ -81,7 +88,10 @@ export default function SmartHomeCapability() {
     if (!active) return;
     const timer = setTimeout(async () => {
       try {
-        const decision = await consciousnessCoordinator.decide('home', 'neutral');
+        const decision = await consciousnessCoordinator.decide(
+          rtl.isRTL ? 'أحتاج التحكم بالمنزل' : 'I need to control my home',
+          'neutral'
+        );
         if (decision.action === 'check_in') {
           EventBus.emit('TWIN_SPEAK', { phrase: rtl.isRTL ? 'هل تحتاج شيئاً في المنزل؟' : 'Do you need anything at home?', tone: 'gentle' });
         }

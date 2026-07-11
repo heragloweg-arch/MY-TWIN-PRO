@@ -5,6 +5,7 @@ import { EventBus } from '../core/EventBus';
 import { memoryEngine } from '../../engine/memory/MemoryEngine';
 import { capabilityResolver } from '../coordinators/CapabilityResolver';
 import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
+import { economyEngine } from '../services/EconomyEngine';
 import { sendMessage } from '../services/twinApi';
 import { useRTL } from '../../lib/useRTL';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
@@ -106,7 +107,13 @@ export default function LifeCoachCapability() {
       setSessions(prev => [newSession, ...prev.slice(0, 9)]);
       setLastResponse(reply);
 
-      try { await memoryEngine.store('decision', inputText.trim(), 65, 'concerned', ['life_coach', actionType]); } catch (e) {}
+      try {
+        await memoryEngine.store('decision', inputText.trim(), 65, 'concerned', ['life_coach', actionType]);
+        await memoryEngine.storeLongTerm('life_coach_session', inputText.trim(), 65, 'life_coach');
+      } catch (e) {}
+
+      // 🆕 مكافأة Soul Points
+      economyEngine.addPoints('study_session', 15, 'جلسة Life Coach');
     } catch (e) {
       setLastResponse(rtl.isRTL ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.');
     } finally {
@@ -119,7 +126,10 @@ export default function LifeCoachCapability() {
     if (!active) return;
     const timer = setTimeout(async () => {
       try {
-        const decision = await consciousnessCoordinator.decide('life', 'concerned');
+        const decision = await consciousnessCoordinator.decide(
+          rtl.isRTL ? 'أحتاج استشارة حياتية' : 'I need life coaching',
+          'concerned'
+        );
         if (decision.action === 'check_in') {
           EventBus.emit('TWIN_SPEAK', { phrase: rtl.isRTL ? 'كيف تشعر اليوم؟' : 'How are you feeling today?', tone: 'gentle' });
         }
@@ -136,7 +146,6 @@ export default function LifeCoachCapability() {
   if (!active) return null;
 
   const activeCat = COACH_CATEGORIES.find(c => c.id === activeCategory) || COACH_CATEGORIES[0];
-  const CatIcon = activeCat.icon;
 
   return (
     <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>

@@ -5,6 +5,7 @@ import { EventBus } from '../core/EventBus';
 import { memoryEngine } from '../../engine/memory/MemoryEngine';
 import { capabilityResolver } from '../coordinators/CapabilityResolver';
 import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
+import { economyEngine } from '../services/EconomyEngine';
 import { sendMessage } from '../services/twinApi';
 import { useRTL } from '../../lib/useRTL';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
@@ -67,7 +68,13 @@ export default function AIImageCapability() {
       setSessions(prev => [newSession, ...prev.slice(0, 9)]);
       setLastResponse(reply);
 
-      try { await memoryEngine.store('learning', inputText.trim(), 60, 'inspired', ['ai_image', actionType]); } catch (e) {}
+      try {
+        await memoryEngine.store('learning', inputText.trim(), 60, 'inspired', ['ai_image', actionType]);
+        await memoryEngine.storeLongTerm('ai_image_prompt', inputText.trim(), 65, 'ai_image');
+      } catch (e) {}
+
+      // 🆕 مكافأة Soul Points
+      economyEngine.addPoints('study_session', 10, 'جلسة AI Image Lab');
     } catch (e) {
       setLastResponse(rtl.isRTL ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.');
     } finally {
@@ -80,7 +87,10 @@ export default function AIImageCapability() {
     if (!active) return;
     const timer = setTimeout(async () => {
       try {
-        const decision = await consciousnessCoordinator.decide('image', 'inspired');
+        const decision = await consciousnessCoordinator.decide(
+          rtl.isRTL ? 'أريد إنشاء صورة' : 'I want to create an image',
+          'inspired'
+        );
         if (decision.action === 'check_in') {
           EventBus.emit('TWIN_SPEAK', { phrase: rtl.isRTL ? 'هل تريد إنشاء صورة جديدة؟' : 'Do you want to create a new image?', tone: 'gentle' });
         }

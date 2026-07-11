@@ -41,11 +41,11 @@ import SessionSurface from './SessionSurface';
 import LivingTimeline from './LivingTimeline';
 import MemoryForest from './MemoryForest';
 import SoulPulse from '../renderers/zones/SoulPulse';
+import { useTwinStore } from '../../store/useTwinStore';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
 
-interface LivingWorldProps { userId: string; }
-
-export default function LivingWorld({ userId }: LivingWorldProps) {
+export default function LivingWorld() {
+  const userId = useTwinStore(s => s.userId) || '';
   const presence = usePresence();
   const breath = useBreathAnimation();
   const emotion = useEmotionalState();

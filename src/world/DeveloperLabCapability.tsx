@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { EventBus } from '../core/EventBus';
 import { memoryEngine } from '../../engine/memory/MemoryEngine';
 import { capabilityResolver } from '../coordinators/CapabilityResolver';
 import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
+import { economyEngine } from '../services/EconomyEngine';
 import { sendMessage } from '../services/twinApi';
 import { useRTL } from '../../lib/useRTL';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
@@ -16,12 +17,6 @@ interface CodeSession {
   type: 'idea' | 'code_review' | 'project' | 'debug' | 'devops';
   content: string;
   timestamp: string;
-}
-
-interface CodeMemory {
-  id: string;
-  content: string;
-  importance: number;
 }
 
 const TYPE_CONFIG: Record<string, { icon: typeof Code; color: string; label_ar: string; label_en: string }> = {
@@ -46,12 +41,11 @@ export default function DeveloperLabCapability() {
   const [inputText, setInputText] = useState('');
   const [activeAction, setActiveAction] = useState<CodeSession['type'] | null>(null);
   const [sessions, setSessions] = useState<CodeSession[]>([]);
-  const [relevantMemories, setRelevantMemories] = useState<CodeMemory[]>([]);
+  const [relevantMemories, setRelevantMemories] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastResponse, setLastResponse] = useState('');
   const [lastSession, setLastSession] = useState<string>('');
 
-  // تفعيل القدرة
   useEffect(() => {
     const unsub1 = EventBus.on('CAPABILITY_ACTIVATED', (payload: any) => {
       if (payload?.capability === 'code_lab') {
@@ -67,7 +61,6 @@ export default function DeveloperLabCapability() {
     return () => { unsub1(); unsub2(); unsub3(); };
   }, [active]);
 
-  // تحميل سياق البرمجة من الذاكرة
   const loadCodeContext = async () => {
     try {
       const saved = await memoryEngine.getCapabilityMemory('code', 5);
@@ -78,6 +71,52 @@ export default function DeveloperLabCapability() {
     } catch (e) {}
   };
 
+  const handleQuickAction = async (action: typeof QUICK_ACTIONS[0]) => {
+    if (!inputText.trim() || isProcessing) return;
+    setActiveAction(action.type);
+    setIsProcessing(true);
+    setLastResponse('');
+
+    try {
+      const enhancedMessage = `${rtl.isRTL ? 'طلب برمجي:' : 'Dev request:'} ${action.type}: ${inputText.trim()}`;
+      const result = await sendMessage(enhancedMessage, [], rtl.isRTL ? 'ar' : 'en');
+      const reply = result?.reply || (rtl.isRTL ? 'تمت المعالجة.' : 'Processed.');
+
+      const newSession: CodeSession = { id: Date.now().toString(), title: inputText.trim().substring(0, 60), type: action.type, content: reply, timestamp: new Date().toISOString() };
+      setSessions(prev => [newSession, ...prev.slice(0, 9)]);
+      setLastResponse(reply);
+
+      try {
+        await memoryEngine.store('learning', inputText.trim(), 60, 'focused', ['code', action.type]);
+        await memoryEngine.storeLongTerm('code_session', inputText.trim(), 65, 'code');
+      } catch (e) {}
+
+      // 🆕 مكافأة Soul Points
+      economyEngine.addPoints('study_session', 15, 'جلسة Developer Lab');
+    } catch (e) {
+      setLastResponse(rtl.isRTL ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.');
+    } finally {
+      setIsProcessing(false);
+      setInputText('');
+    }
+  };
+
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(async () => {
+      try {
+        const decision = await consciousnessCoordinator.decide(
+          rtl.isRTL ? 'أريد برمجة شيء' : 'I want to code something',
+          'focused'
+        );
+        if (decision.action === 'check_in') {
+          EventBus.emit('TWIN_SPEAK', { phrase: rtl.isRTL ? 'هل لديك كود تريد مراجعته؟' : 'Do you have code to review?', tone: 'gentle' });
+        }
+      } catch (e) {}
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [active]);
+
   const handleDeactivate = () => {
     EventBus.emit('CAPABILITY_DEACTIVATED', { capability: 'code_lab', timestamp: Date.now() });
     capabilityResolver.deactivate();
@@ -87,7 +126,6 @@ export default function DeveloperLabCapability() {
 
   return (
     <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>
-      {/* رأس القدرة */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={[styles.iconWrapLarge, { backgroundColor: '#00BCD4' + '20' }]}>
@@ -104,7 +142,13 @@ export default function DeveloperLabCapability() {
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Canvas — إدخال النص */}
+        {lastSession && (
+          <View style={styles.lastSessionCard}>
+            <Brain size={16} stroke="#00BCD4" />
+            <Text style={styles.lastSessionText}>{rtl.isRTL ? 'آخر جلسة:' : 'Last session:'} {lastSession}</Text>
+          </View>
+        )}
+
         <View style={styles.canvasCard}>
           <View style={styles.canvasHeader}>
             <Code size={16} stroke="#00BCD4" />
@@ -121,7 +165,6 @@ export default function DeveloperLabCapability() {
             textAlignVertical="top"
           />
 
-          {/* أزرار الإجراءات السريعة */}
           <View style={styles.actionsGrid}>
             {QUICK_ACTIONS.map(action => {
               const config = TYPE_CONFIG[action.type];
@@ -153,7 +196,6 @@ export default function DeveloperLabCapability() {
           )}
         </View>
 
-        {/* الجلسات السابقة */}
         {sessions.length > 0 && (
           <View style={styles.sessionsSection}>
             <Text style={styles.sectionTitle}>{rtl.isRTL ? 'الجلسات السابقة' : 'Previous Sessions'}</Text>
@@ -178,7 +220,6 @@ export default function DeveloperLabCapability() {
           </View>
         )}
 
-        {/* ذكريات برمجية */}
         {relevantMemories.length > 0 && (
           <View style={styles.memoriesCard}>
             <View style={styles.memoriesHeader}>
@@ -196,8 +237,6 @@ export default function DeveloperLabCapability() {
 }
 
 const styles = StyleSheet.create({
-  lastSessionCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: 'rgba(0,188,212,0.08)', borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
-  lastSessionText: { color: '#00BCD4', fontSize: 13, flex: 1 },
   container: { paddingHorizontal: SPACE.lg, paddingVertical: SPACE.md, maxHeight: '70%' },
   scroll: { gap: SPACE.md },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACE.md },
@@ -207,6 +246,8 @@ const styles = StyleSheet.create({
   headerSubtitle: { color: '#6B5B8A', fontSize: 12 },
   closeBtn: { padding: 8, borderRadius: RADIUS.sm, backgroundColor: 'rgba(255,255,255,0.05)' },
   closeText: { color: '#6B5B8A', fontSize: 16, fontWeight: '700' },
+  lastSessionCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: 'rgba(0,188,212,0.08)', borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
+  lastSessionText: { color: '#00BCD4', fontSize: 13, flex: 1 },
   canvasCard: { backgroundColor: 'rgba(26, 18, 38, 0.95)', borderRadius: RADIUS.card, borderWidth: 1, borderColor: 'rgba(0, 188, 212, 0.25)', padding: SPACE.md },
   canvasHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.sm },
   canvasLabel: { color: '#00BCD4', fontSize: 14, fontWeight: '600' },

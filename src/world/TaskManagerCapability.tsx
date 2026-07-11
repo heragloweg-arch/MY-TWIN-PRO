@@ -5,6 +5,7 @@ import { EventBus } from '../core/EventBus';
 import { memoryEngine } from '../../engine/memory/MemoryEngine';
 import { capabilityResolver } from '../coordinators/CapabilityResolver';
 import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
+import { economyEngine } from '../services/EconomyEngine';
 import { sendMessage } from '../services/twinApi';
 import { useRTL } from '../../lib/useRTL';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
@@ -83,7 +84,13 @@ export default function TaskManagerCapability() {
       setTasks(prev => [newTask, ...prev]);
       setLastResponse(reply);
 
-      try { await memoryEngine.store('decision', inputText.trim(), 55, 'focused', ['task_manager', 'medium']); } catch (e) {}
+      try {
+        await memoryEngine.store('decision', inputText.trim(), 55, 'focused', ['task_manager', 'medium']);
+        await memoryEngine.storeLongTerm('task_entry', inputText.trim(), 55, 'task_manager');
+      } catch (e) {}
+
+      // 🆕 مكافأة Soul Points
+      economyEngine.addPoints('goal', 5, 'إضافة مهمة جديدة');
     } catch (e) {
       setLastResponse(rtl.isRTL ? 'حدث خطأ.' : 'An error occurred.');
     } finally {
@@ -96,6 +103,10 @@ export default function TaskManagerCapability() {
     setTasks(prev => prev.map(t => {
       if (t.id === taskId) {
         const updated = { ...t, completed: !t.completed };
+        if (updated.completed) {
+          // 🆕 مكافأة Soul Points عند إكمال مهمة
+          economyEngine.addPoints('goal', 3, 'إكمال مهمة');
+        }
         return updated;
       }
       return t;
@@ -111,7 +122,10 @@ export default function TaskManagerCapability() {
     if (!active) return;
     const timer = setTimeout(async () => {
       try {
-        const decision = await consciousnessCoordinator.decide('tasks', 'focused');
+        const decision = await consciousnessCoordinator.decide(
+          rtl.isRTL ? 'أحتاج تنظيم مهامي' : 'I need to organize my tasks',
+          'focused'
+        );
         if (decision.action === 'check_in') {
           EventBus.emit('TWIN_SPEAK', {
             phrase: rtl.isRTL ? 'هل أنجزت مهام اليوم؟' : 'Did you complete today\'s tasks?',
@@ -154,7 +168,6 @@ export default function TaskManagerCapability() {
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* إحصائيات سريعة */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <ListChecks size={16} stroke="#F59E0B" />
@@ -173,7 +186,6 @@ export default function TaskManagerCapability() {
           </View>
         </View>
 
-        {/* إضافة مهمة */}
         <View style={styles.canvasCard}>
           <View style={styles.canvasHeader}>
             <Plus size={16} stroke="#F59E0B" />
@@ -194,7 +206,6 @@ export default function TaskManagerCapability() {
           </View>
         </View>
 
-        {/* تصفية */}
         <View style={styles.filterRow}>
           {(['all', 'active', 'completed'] as const).map(filter => (
             <TouchableOpacity
@@ -209,7 +220,6 @@ export default function TaskManagerCapability() {
           ))}
         </View>
 
-        {/* قائمة المهام */}
         {filteredTasks.length > 0 ? (
           <View style={styles.tasksList}>
             {filteredTasks.map(task => (

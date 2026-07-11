@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { EventBus } from '../core/EventBus';
 import { memoryEngine } from '../../engine/memory/MemoryEngine';
 import { capabilityResolver } from '../coordinators/CapabilityResolver';
 import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
+import { economyEngine } from '../services/EconomyEngine';
 import { sendMessage } from '../services/twinApi';
 import { useRTL } from '../../lib/useRTL';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
@@ -82,19 +83,13 @@ const QUICK_ACTIONS = [
   { type: 'repurpose', icon: Filter, color: '#A855F7', label_ar: 'إعادة توظيف', label_en: 'Repurpose', placeholder_ar: 'المحتوى + الصيغة المصدر + الهدف...', placeholder_en: 'Content + source + target format...' },
 ];
 
-interface BusinessMemory {
-  id: string;
-  content: string;
-  importance: number;
-}
-
 export default function ContentCreatorCapability() {
   const rtl = useRTL();
   const [active, setActive] = useState(false);
   const [inputText, setInputText] = useState('');
   const [activeAction, setActiveAction] = useState<string | null>(null);
   const [sessions, setSessions] = useState<CreatorSession[]>([]);
-  const [relevantMemories, setRelevantMemories] = useState<BusinessMemory[]>([]);
+  const [relevantMemories, setRelevantMemories] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastResponse, setLastResponse] = useState('');
   const [lastSession, setLastSession] = useState<string>('');
@@ -122,18 +117,63 @@ export default function ContentCreatorCapability() {
     } catch (e) {}
   };
 
+  const handleQuickAction = async (actionType: string) => {
+    if (!inputText.trim() || isProcessing) return;
+    setActiveAction(actionType);
+    setIsProcessing(true);
+    setLastResponse('');
+
+    try {
+      const enhancedMessage = `${rtl.isRTL ? 'طلب إبداعي:' : 'Creative request:'} ${actionType}: ${inputText.trim()}`;
+      const result = await sendMessage(enhancedMessage, [], rtl.isRTL ? 'ar' : 'en');
+      const reply = result?.reply || (rtl.isRTL ? 'تمت المعالجة.' : 'Processed.');
+
+      const newSession: CreatorSession = { id: Date.now().toString(), title: inputText.trim().substring(0, 60), type: actionType, content: reply, timestamp: new Date().toISOString() };
+      setSessions(prev => [newSession, ...prev.slice(0, 9)]);
+      setLastResponse(reply);
+
+      try {
+        await memoryEngine.store('learning', inputText.trim(), 60, 'inspired', ['content', actionType]);
+        await memoryEngine.storeLongTerm('creator_session', inputText.trim(), 65, 'creator');
+      } catch (e) {}
+
+      // 🆕 مكافأة Soul Points
+      economyEngine.addPoints('study_session', 10, 'جلسة Creative Studio');
+    } catch (e) {
+      setLastResponse(rtl.isRTL ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.');
+    } finally {
+      setIsProcessing(false);
+      setInputText('');
+    }
+  };
+
+  useEffect(() => {
+    if (!active) return;
+    const timer = setTimeout(async () => {
+      try {
+        const decision = await consciousnessCoordinator.decide(
+          rtl.isRTL ? 'أريد صناعة محتوى' : 'I want to create content',
+          'inspired'
+        );
+        if (decision.action === 'check_in') {
+          EventBus.emit('TWIN_SPEAK', { phrase: rtl.isRTL ? 'هل تريد صناعة محتوى جديد؟' : 'Do you want to create new content?', tone: 'gentle' });
+        }
+      } catch (e) {}
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [active]);
+
   const handleDeactivate = () => {
     EventBus.emit('CAPABILITY_DEACTIVATED', { capability: 'content_creator', timestamp: Date.now() });
     capabilityResolver.deactivate();
   };
+
   if (!active) return null;
 
   const activeCat = CREATOR_CATEGORIES.find(c => c.id === activeCategory) || CREATOR_CATEGORIES[0];
-  const CatIcon = activeCat.icon;
 
   return (
     <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>
-      {/* رأس القدرة */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={[styles.iconWrapLarge, { backgroundColor: '#8B5CF620' }]}>
@@ -152,7 +192,13 @@ export default function ContentCreatorCapability() {
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Canvas — إدخال النص */}
+        {lastSession && (
+          <View style={styles.lastSessionCard}>
+            <Brain size={16} stroke="#8B5CF6" />
+            <Text style={styles.lastSessionText}>{rtl.isRTL ? 'آخر جلسة:' : 'Last session:'} {lastSession}</Text>
+          </View>
+        )}
+
         <View style={styles.canvasCard}>
           <View style={styles.canvasHeader}>
             <Sparkles size={16} stroke="#8B5CF6" />
@@ -171,7 +217,6 @@ export default function ContentCreatorCapability() {
             textAlignVertical="top"
           />
 
-          {/* فئات الإجراءات */}
           <View style={styles.categoriesRow}>
             {CREATOR_CATEGORIES.map(cat => {
               const Icon = cat.icon;
@@ -190,7 +235,6 @@ export default function ContentCreatorCapability() {
             })}
           </View>
 
-          {/* إجراءات الفئة النشطة */}
           <View style={styles.actionsGrid}>
             {activeCat.actions.map(action => {
               const ActionIcon = action.icon;
@@ -211,7 +255,6 @@ export default function ContentCreatorCapability() {
             })}
           </View>
 
-          {/* إجراءات سريعة إضافية */}
           <View style={styles.quickActionsRow}>
             {QUICK_ACTIONS.map(action => {
               const ActionIcon = action.icon;
@@ -245,7 +288,6 @@ export default function ContentCreatorCapability() {
           )}
         </View>
 
-        {/* الجلسات السابقة */}
         {sessions.length > 0 && (
           <View style={styles.sessionsSection}>
             <Text style={styles.sectionTitle}>
@@ -270,7 +312,6 @@ export default function ContentCreatorCapability() {
           </View>
         )}
 
-        {/* ذكريات إبداعية */}
         {relevantMemories.length > 0 && (
           <View style={styles.memoriesCard}>
             <View style={styles.memoriesHeader}>
@@ -290,6 +331,7 @@ export default function ContentCreatorCapability() {
     </Animated.View>
   );
 }
+
 const styles = StyleSheet.create({
   container: { paddingHorizontal: SPACE.lg, paddingVertical: SPACE.md, maxHeight: '75%' },
   scroll: { gap: SPACE.md },
@@ -300,7 +342,8 @@ const styles = StyleSheet.create({
   headerSubtitle: { color: '#6B5B8A', fontSize: 12 },
   closeBtn: { padding: 8, borderRadius: RADIUS.sm, backgroundColor: 'rgba(255,255,255,0.05)' },
   closeText: { color: '#6B5B8A', fontSize: 16, fontWeight: '700' },
-  
+  lastSessionCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: 'rgba(139,92,246,0.08)', borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
+  lastSessionText: { color: '#8B5CF6', fontSize: 13, flex: 1 },
   canvasCard: { 
     backgroundColor: 'rgba(26, 18, 38, 0.95)', 
     borderRadius: RADIUS.card, 
@@ -320,7 +363,6 @@ const styles = StyleSheet.create({
     borderColor: '#2D1B4D', 
     minHeight: 100,
   },
-  
   categoriesRow: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
@@ -339,7 +381,6 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   categoryLabel: { fontSize: 12, fontWeight: '600' },
-  
   actionsGrid: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
@@ -356,7 +397,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   actionLabel: { fontSize: 13, fontWeight: '600' },
-  
   quickActionsRow: {
     gap: SPACE.sm,
     marginBottom: SPACE.sm,
@@ -372,9 +412,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   quickActionLabel: { fontSize: 13, fontWeight: '600', flex: 1 },
-  
   processingText: { color: '#8B5CF6', fontSize: 13, marginTop: SPACE.sm, fontStyle: 'italic' },
-  
   responseCard: { 
     backgroundColor: '#161122', 
     borderRadius: RADIUS.sm, 
@@ -384,7 +422,6 @@ const styles = StyleSheet.create({
     borderColor: '#2D1B4D' 
   },
   responseText: { color: '#E8E0F0', fontSize: 14, lineHeight: 22 },
-  
   sessionsSection: { marginTop: SPACE.md },
   sectionTitle: { color: '#A78BFA', fontSize: 14, fontWeight: '600', marginBottom: SPACE.sm },
   sessionItem: { 
@@ -401,7 +438,6 @@ const styles = StyleSheet.create({
   sessionTitle: { color: '#E8E0F0', fontSize: 13, fontWeight: '500' },
   sessionMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   sessionTime: { color: '#6B5B8A', fontSize: 10 },
-  
   memoriesCard: { 
     backgroundColor: 'rgba(139, 92, 246, 0.06)', 
     borderRadius: RADIUS.card, 

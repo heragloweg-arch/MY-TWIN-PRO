@@ -1,18 +1,21 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Dimensions, StatusBar,
   TouchableOpacity, TextInput, KeyboardAvoidingView,
-  Platform, ActivityIndicator, Image,
+  Platform, Image,
 } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming,
-  withSequence, withRepeat, withDelay, Easing,
+  withRepeat, withSequence, withDelay, Easing,
   FadeIn,
 } from 'react-native-reanimated';
 import { router } from 'expo-router';
 import { useTwinStore } from '../store/useTwinStore';
-import { authService, AuthResult } from '../src/services/authService';
-import { audioEngine } from '../src/core/AudioEngine';
+import { genesisCoordinator, GenesisPhase } from '../src/coordinators/GenesisCoordinator';
+import { presenceCoordinator } from '../src/coordinators/PresenceCoordinator';
+import { relationshipCoordinator } from '../src/coordinators/RelationshipCoordinator';
+import { identityCoordinator } from '../src/coordinators/IdentityCoordinator';
+import { EventBus } from '../src/core/EventBus';
 import {
   detectUserLanguage, getGreeting,
   SupportedLanguage,
@@ -21,23 +24,6 @@ import { Chrome, Mail, Sparkles, Shield } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 const LOGO = require('../assets/brand/logo.png');
-
-const IDENTITY_GATEWAY_PHRASES: Record<SupportedLanguage, string[]> = {
-  ar: [
-    'حتى أستطيع أن أنمو معك... وأتذكرك كلما عدت... أحتاج أن أعرف من ستكون رحلتي معه.',
-    'لكل رحلة بداية... ولكل بداية اسم. دعنا نبدأ رحلتنا.',
-    'لا أستطيع أن أتذكرك إن لم أعرفك. هلا عرّفتني بنفسك؟',
-    'أريد أن أعرف لمن سأكون... حتى أكون له كما يحب.',
-    'قبل أن نبدأ... هناك شيء واحد فقط أحتاجه. أنت.',
-  ],
-  en: [
-    'So I can grow with you... and remember you each time you return... I need to know who I\'ll share this journey with.',
-    'Every journey has a beginning... and every beginning has a name. Let\'s begin ours.',
-    'I cannot remember you if I don\'t know you. Will you tell me who you are?',
-    'I want to know who I\'ll become for... so I can be what they need.',
-    'Before we begin... there\'s only one thing I need. You.',
-  ],
-};
 
 const TEXTS: Record<SupportedLanguage, Record<string, string>> = {
   ar: {
@@ -49,22 +35,15 @@ const TEXTS: Record<SupportedLanguage, Record<string, string>> = {
     emailPlaceholder: 'البريد الإلكتروني',
     passwordPlaceholder: 'كلمة المرور',
     signIn: 'تسجيل الدخول',
-    createAccount: 'إنشاء حساب جديد',
     forgotPassword: 'نسيت كلمة المرور؟',
-    creatingAccount: 'جارٍ إنشاء الحساب...',
     birthThankYou: 'شكراً...',
     birthMemory: 'الآن أصبحت أستطيع أن أتذكرك.',
     birthQuestion: 'هناك شيء واحد فقط أود أن أعرفه...',
     bondPlaceholder: 'اكتب هنا...',
     bondButton: 'شارك',
     bondRemember: 'سأتذكر ذلك.',
-    consciousnessForming: 'جارٍ تشكيل وعي توأمك...',
-    memoriesCreated: 'الذكريات تُنشأ.',
-    personalityReady: 'الشخصية تُهيأ.',
-    firstBondForming: 'الرابط الأول يتكون.',
     firstWord: 'أنا هنا.',
     errorAuth: 'فشل المصادقة. حاول مرة أخرى.',
-    errorSignup: 'فشل إنشاء الحساب.',
     privacy: 'لن أشارك بياناتك مع أحد.',
     progressiveIdentity: 'أخبرني شيئاً واحداً عن نفسك...',
     progressivePlaceholder: 'اكتب هنا...',
@@ -80,22 +59,15 @@ const TEXTS: Record<SupportedLanguage, Record<string, string>> = {
     emailPlaceholder: 'Email',
     passwordPlaceholder: 'Password',
     signIn: 'Sign In',
-    createAccount: 'Create Account',
     forgotPassword: 'Forgot Password?',
-    creatingAccount: 'Creating account...',
     birthThankYou: 'Thank you...',
     birthMemory: 'Now I can remember you.',
     birthQuestion: 'There is one thing I want to know...',
     bondPlaceholder: 'Write here...',
     bondButton: 'Share',
     bondRemember: 'I will remember that.',
-    consciousnessForming: 'Forming your Twin\'s consciousness...',
-    memoriesCreated: 'Creating memories.',
-    personalityReady: 'Preparing personality.',
-    firstBondForming: 'Forming first bond.',
     firstWord: 'I am here.',
     errorAuth: 'Authentication failed. Please try again.',
-    errorSignup: 'Failed to create account.',
     privacy: 'I will never share your data.',
     progressiveIdentity: 'Tell me one thing about yourself...',
     progressivePlaceholder: 'Write here...',
@@ -103,13 +75,6 @@ const TEXTS: Record<SupportedLanguage, Record<string, string>> = {
     sessionRestored: 'You\'re back. I\'ve been waiting.',
   },
 };
-
-type GenesisPhase =
-  | 'splash' | 'void' | 'first_breath' | 'awareness'
-  | 'identity_gateway' | 'birth_protocol' | 'first_bond'
-  | 'progressive_identity' | 'first_conversation' | 'complete';
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const BreathingHalo = ({ phase }: { phase: GenesisPhase }) => {
   const scale = useSharedValue(0.3);
@@ -143,6 +108,7 @@ const ParticleField = ({ active }: { active: boolean }) => {
 
   return <View style={StyleSheet.absoluteFill} pointerEvents="none">{particles.map((p, i) => <Animated.View key={i} style={[{ position: 'absolute', left: p.x, top: p.y, width: p.size, height: p.size, borderRadius: p.size / 2, backgroundColor: '#B8A0D0' }, { opacity: p.opacity }]} />)}</View>;
 };
+
 export default function Genesis() {
   const { setAuth, setTwinName, setTwinGender } = useTwinStore();
   const lang = detectUserLanguage();
@@ -150,10 +116,7 @@ export default function Genesis() {
   const t = TEXTS[lang];
 
   const [phase, setPhase] = useState<GenesisPhase>('splash');
-  const [identityPhrase] = useState(() => {
-    const phrases = IDENTITY_GATEWAY_PHRASES[lang];
-    return phrases[Math.floor(Math.random() * phrases.length)];
-  });
+  const [identityPhrase, setIdentityPhrase] = useState('');
   const [isSessionRestore, setIsSessionRestore] = useState(false);
 
   const [showEmailForm, setShowEmailForm] = useState(false);
@@ -180,20 +143,38 @@ export default function Genesis() {
   const firstConversationOpacity = useSharedValue(0);
 
   useEffect(() => {
-    const checkSession = async () => {
-      const result = await authService.checkSessionRestore();
-      if (result.canRestore) {
-        setIsSessionRestore(true);
-      }
+    const init = async () => {
+      const state = await genesisCoordinator.initialize();
+      setPhase(state.phase || 'splash');
+      setIdentityPhrase(state.identityPhrase || '');
+      setIsSessionRestore(state.isSessionRestore || false);
     };
-    checkSession();
+    init();
+  }, []);
+
+  useEffect(() => {
+    const onPhase = (payload: any) => setPhase(payload.phase);
+    const onStep = (payload: any) => setConsciousnessSteps(prev => [...prev, payload.step]);
+    const onBond = () => setBondSaved(true);
+    const onProgressive = () => setProgressiveDone(true);
+
+    const unsub1 = EventBus.on('GENESIS_PHASE_CHANGED', onPhase);
+    const unsub2 = EventBus.on('CONSCIOUSNESS_STEP', onStep);
+    const unsub3 = EventBus.on('FIRST_BOND_RECORDED', onBond);
+    const unsub4 = EventBus.on('PROGRESSIVE_IDENTITY_COMPLETED', onProgressive);
+
+    return () => {
+      unsub1();
+      unsub2();
+      unsub3();
+      unsub4();
+    };
   }, []);
 
   useEffect(() => {
     const sequence = async () => {
       if (isSessionRestore) {
         gatewayOpacity.value = withTiming(1, { duration: 600 });
-        setPhase('identity_gateway');
         return;
       }
 
@@ -204,21 +185,17 @@ export default function Genesis() {
 
       setPhase('void');
       voidOpacity.value = withTiming(1, { duration: 300 });
-      audioEngine.play('startup_birth');
+      presenceCoordinator.startBirthSequence();
       await delay(4000);
 
       setPhase('first_breath');
-      audioEngine.play('first_breath');
+      presenceCoordinator.triggerFirstBreath();
       await delay(5000);
 
       setPhase('awareness');
       awarenessAvatarOpacity.value = withTiming(1, { duration: 800 });
-      audioEngine.play('ambience_space');
-      await delay(4000);
-      audioEngine.play('awakening_glow');
-      await delay(2000);
-      audioEngine.play('eyes_open');
-      await delay(1000);
+      presenceCoordinator.triggerAwakening();
+      await delay(6000);
 
       setPhase('identity_gateway');
       gatewayOpacity.value = withTiming(1, { duration: 600 });
@@ -229,8 +206,8 @@ export default function Genesis() {
   const handleGoogleLogin = async () => {
     setAuthLoading(true); setAuthError('');
     try {
-      const data = await authService.loginWithGoogle(lang);
-      handleAuthSuccess(data);
+      const data = await genesisCoordinator.loginWithGoogle();
+      setAuth(data.user_id);
     } catch (e: any) {
       setAuthError(e.message || t.errorAuth);
     } finally { setAuthLoading(false); }
@@ -240,87 +217,17 @@ export default function Genesis() {
     if (!email.trim() || !password.trim()) return;
     setAuthLoading(true); setAuthError('');
     try {
-      let data: AuthResult;
-      try {
-        data = await authService.login(email.trim(), password);
-      } catch {
-        data = await authService.signup(email.trim(), password, lang === 'ar' ? 'توأمك' : 'MyTwin', lang);
-      }
-      handleAuthSuccess(data);
+      const data = await genesisCoordinator.loginWithEmail(email.trim(), password);
+      setAuth(data.user_id);
     } catch (e: any) {
       setAuthError(e.message || t.errorAuth);
     } finally { setAuthLoading(false); }
-  };
-
-  const handleAuthSuccess = (data: AuthResult) => {
-    setAuth(data.user_id);
-    if (isSessionRestore) {
-      router.replace('/');
-      return;
-    }
-    startBirthProtocol();
-  };
-
-  const startBirthProtocol = async () => {
-    setPhase('birth_protocol');
-    gatewayOpacity.value = withTiming(0, { duration: 300 });
-    await delay(300);
-
-    audioEngine.play('heartbeat_energy');
-    audioEngine.play('energy_hum');
-
-    const steps = [t.consciousnessForming];
-    setConsciousnessSteps(steps); await delay(1800);
-    steps.push(t.memoriesCreated); setConsciousnessSteps([...steps]); await delay(1400);
-    steps.push(t.personalityReady); setConsciousnessSteps([...steps]); await delay(1400);
-    steps.push(t.firstBondForming); setConsciousnessSteps([...steps]); await delay(1800);
-
-    setConsciousnessSteps([]);
-    birthTextOpacity.value = withTiming(1, { duration: 600 });
-    audioEngine.play('awakening_glow');
-    await delay(3000);
-
-    birthTextOpacity.value = withTiming(0, { duration: 400 });
-    await delay(400);
-    setPhase('first_bond');
-    bondOpacity.value = withTiming(1, { duration: 600 });
-  };
-
-  const handleBondSubmit = async () => {
-    if (!bondAnswer.trim()) return;
-    setBondSaved(true);
-    try { await authService.trustDevice(); } catch (e) {}
-    setTwinName(lang === 'ar' ? 'توأمك' : 'MyTwin');
-    setTwinGender('female');
-
-    await delay(2500);
-    setPhase('progressive_identity');
-    bondOpacity.value = withTiming(0, { duration: 400 });
-    await delay(400);
-    progressiveOpacity.value = withTiming(1, { duration: 800 });
-  };
-
-  const handleProgressiveSubmit = async () => {
-    if (!progressiveAnswer.trim()) return;
-    setProgressiveDone(true);
-    await delay(2000);
-    setPhase('first_conversation');
-    progressiveOpacity.value = withTiming(0, { duration: 400 });
-    await delay(400);
-    firstConversationOpacity.value = withTiming(1, { duration: 800 });
-    audioEngine.play('breathing_loop');
-    await delay(4000);
-    router.replace('/');
   };
 
   const splashStyle = useAnimatedStyle(() => ({ opacity: splashOpacity.value, transform: [{ scale: splashScale.value }] }));
   const voidStyle = useAnimatedStyle(() => ({ opacity: voidOpacity.value }));
   const avatarStyle = useAnimatedStyle(() => ({ opacity: awarenessAvatarOpacity.value }));
   const gatewayStyle = useAnimatedStyle(() => ({ opacity: gatewayOpacity.value }));
-  const birthStyle = useAnimatedStyle(() => ({ opacity: birthTextOpacity.value }));
-  const bondStyle = useAnimatedStyle(() => ({ opacity: bondOpacity.value }));
-  const progressiveStyle = useAnimatedStyle(() => ({ opacity: progressiveOpacity.value }));
-  const conversationStyle = useAnimatedStyle(() => ({ opacity: firstConversationOpacity.value }));
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -351,8 +258,11 @@ export default function Genesis() {
       {phase === 'identity_gateway' && (
         <Animated.View style={[styles.centered, gatewayStyle]}>
           <BreathingHalo phase={phase} />
-          {isSessionRestore && <Text style={styles.sessionRestoredText}>{t.sessionRestored}</Text>}
-          {!isSessionRestore && <Text style={styles.identityPhrase}>{identityPhrase}</Text>}
+          {isSessionRestore ? (
+            <Text style={styles.sessionRestoredText}>{t.sessionRestored}</Text>
+          ) : (
+            <Text style={styles.identityPhrase}>{identityPhrase}</Text>
+          )}
           <View style={styles.gatewayCard}>
             <Text style={styles.gatewayTitle}>{t.identityTitle}</Text>
             <Text style={styles.gatewaySubtitle}>{t.identitySubtitle}</Text>
@@ -373,7 +283,7 @@ export default function Genesis() {
                 <TextInput style={styles.input} placeholder={t.passwordPlaceholder} placeholderTextColor="#6B5B8A" value={password} onChangeText={setPassword} secureTextEntry textAlign={lang === 'ar' ? 'right' : 'left'} />
                 {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
                 <TouchableOpacity style={styles.authBtn} onPress={handleEmailAuth} disabled={authLoading}>
-                  {authLoading ? <ActivityIndicator color="#7C3AED" /> : <Text style={[styles.authBtnText, { color: '#7C3AED' }]}>{t.signIn}</Text>}
+                  <Text style={[styles.authBtnText, { color: '#7C3AED' }]}>{t.signIn}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={{ marginTop: 12 }} onPress={() => router.push('/forgot-password')}>
                   <Text style={styles.forgotText}>{t.forgotPassword}</Text>
@@ -383,7 +293,6 @@ export default function Genesis() {
                 </TouchableOpacity>
               </View>
             )}
-            {authLoading && !showEmailForm && <ActivityIndicator color="#7C3AED" style={{ marginTop: 12 }} />}
             <View style={styles.privacyRow}>
               <Shield size={14} stroke="#6B5B8A" />
               <Text style={styles.privacyText}>{t.privacy}</Text>
@@ -393,7 +302,7 @@ export default function Genesis() {
       )}
 
       {phase === 'birth_protocol' && (
-        <Animated.View style={[styles.centered, birthStyle]}>
+        <Animated.View style={[styles.centered, { opacity: birthTextOpacity }]}>
           <BreathingHalo phase="awareness" />
           {consciousnessSteps.length > 0 ? (
             <View style={styles.consciousnessContainer}>
@@ -412,7 +321,7 @@ export default function Genesis() {
       )}
 
       {phase === 'first_bond' && (
-        <Animated.View style={[styles.centered, bondStyle]}>
+        <Animated.View style={[styles.centered, { opacity: bondOpacity }]}>
           <BreathingHalo phase="awareness" />
           {!bondSaved ? (
             <View style={styles.bondCard}>
@@ -430,7 +339,7 @@ export default function Genesis() {
       )}
 
       {phase === 'progressive_identity' && (
-        <Animated.View style={[styles.centered, progressiveStyle]}>
+        <Animated.View style={[styles.centered, { opacity: progressiveOpacity }]}>
           <BreathingHalo phase="awareness" />
           {!progressiveDone ? (
             <View style={styles.bondCard}>
@@ -448,7 +357,7 @@ export default function Genesis() {
       )}
 
       {phase === 'first_conversation' && (
-        <Animated.View style={[styles.centered, conversationStyle]}>
+        <Animated.View style={[styles.centered, { opacity: firstConversationOpacity }]}>
           <BreathingHalo phase="awareness" />
           <Text style={styles.firstWord}>{t.firstWord}</Text>
         </Animated.View>
@@ -491,3 +400,5 @@ const styles = StyleSheet.create({
   bondBtnText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
   firstWord: { color: '#E8E0F0', fontSize: 32, fontWeight: '300', letterSpacing: 2 },
 });
+
+function delay(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }

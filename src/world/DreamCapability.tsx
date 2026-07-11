@@ -5,6 +5,7 @@ import { EventBus } from '../core/EventBus';
 import { memoryEngine } from '../../engine/memory/MemoryEngine';
 import { capabilityResolver } from '../coordinators/CapabilityResolver';
 import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
+import { economyEngine } from '../services/EconomyEngine';
 import { sendMessage } from '../services/twinApi';
 import { useRTL } from '../../lib/useRTL';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
@@ -71,7 +72,13 @@ export default function DreamCapability() {
       setLastResponse(reply);
       setDreamCount(prev => prev + 1);
 
-      try { await memoryEngine.store('dream', inputText.trim(), 70, 'curious', ['dream', actionType]); } catch (e) {}
+      try {
+        await memoryEngine.store('dream', inputText.trim(), 70, 'curious', ['dream', actionType]);
+        await memoryEngine.storeLongTerm('dream_entry', inputText.trim(), 70, 'dream');
+      } catch (e) {}
+
+      // 🆕 مكافأة Soul Points
+      economyEngine.rewardDream();
     } catch (e) {
       setLastResponse(rtl.isRTL ? 'حدث خطأ. حاول مرة أخرى.' : 'An error occurred. Please try again.');
     } finally {
@@ -84,7 +91,10 @@ export default function DreamCapability() {
     if (!active) return;
     const timer = setTimeout(async () => {
       try {
-        const decision = await consciousnessCoordinator.decide('dream', 'curious');
+        const decision = await consciousnessCoordinator.decide(
+          rtl.isRTL ? 'أريد تفسير حلمي' : 'I want to interpret my dream',
+          'curious'
+        );
         if (decision.action === 'check_in') {
           EventBus.emit('TWIN_SPEAK', { phrase: rtl.isRTL ? 'هل حلمت الليلة؟' : 'Did you dream tonight?', tone: 'gentle' });
         }
@@ -102,7 +112,6 @@ export default function DreamCapability() {
 
   return (
     <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>
-      {/* رأس القدرة */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={[styles.iconWrapLarge, { backgroundColor: '#8B5CF620' }]}>
@@ -119,7 +128,6 @@ export default function DreamCapability() {
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* لوحة الحلم */}
         <View style={styles.canvasCard}>
           <View style={styles.canvasHeader}>
             <Moon size={16} stroke="#8B5CF6" />
@@ -136,7 +144,6 @@ export default function DreamCapability() {
             textAlignVertical="top"
           />
 
-          {/* آخر حلم — استعادة السياق */}
           {lastDream && (
             <View style={styles.lastDreamCard}>
               <Brain size={16} stroke="#8B5CF6" />
@@ -144,14 +151,12 @@ export default function DreamCapability() {
             </View>
           )}
 
-          {/* إحصائيات سريعة */}
           {dreamCount > 0 && (
             <View style={styles.statsRow}>
               <Text style={styles.statText}>{dreamCount} {rtl.isRTL ? 'حلم' : 'dreams'}</Text>
             </View>
           )}
 
-          {/* إجراءات الأحلام */}
           <View style={styles.actionsGrid}>
             {DREAM_ACTIONS.map(action => {
               const IconComponent = action.icon;
@@ -178,7 +183,6 @@ export default function DreamCapability() {
           )}
         </View>
 
-        {/* سجل الأحلام */}
         {sessions.length > 0 && (
           <View style={styles.sessionsSection}>
             <Text style={styles.sectionTitle}>{rtl.isRTL ? 'سجل الأحلام' : 'Dream History'}</Text>

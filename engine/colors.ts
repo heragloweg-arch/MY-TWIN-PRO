@@ -40,7 +40,7 @@ export const FONTS = {
 
 export const SPACING = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
 
-const DARK_THEME: ThemeColors = {
+export const DARK_THEME: ThemeColors = {
   bg: '#120B1E',
   bgSecondary: '#1A1226',
   card: '#1A1226',
@@ -63,7 +63,7 @@ const DARK_THEME: ThemeColors = {
   glass: 'rgba(42, 42, 42, 0.7)',
 };
 
-const LIGHT_THEME: ThemeColors = {
+export const LIGHT_THEME: ThemeColors = {
   bg: '#F8F6F2',
   bgSecondary: '#F3F0FF',
   card: '#FFFFFF',

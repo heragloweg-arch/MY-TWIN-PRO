@@ -1,58 +1,157 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { router } from 'expo-router';
 import { authService } from '../src/services/authService';
+import AmbientField from '../src/world/AmbientField';
+import SoulPulse from '../src/renderers/zones/SoulPulse';
+import BreathingGlow from '../src/renderers/zones/BreathingGlow';
+
+type RestorePhase = 'searching' | 'reconnecting' | 'new_connection';
 
 export default function SessionRestore() {
-  const [status, setStatus] = useState<'checking' | 'restoring' | 'no_session'>('checking');
+  const [phase, setPhase] = useState<RestorePhase>('searching');
+  const [found, setFound] = useState(false);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    checkSession();
+    // بداية الظهور التدريجي
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 2000,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    searchPresence();
   }, []);
 
-  const checkSession = async () => {
+  const searchPresence = async () => {
     try {
       const result = await authService.checkSessionRestore();
       if (result.canRestore && result.token) {
-        setStatus('restoring');
-        setTimeout(() => router.replace('/'), 1500);
+        setFound(true);
+        setPhase('reconnecting');
+
+        // ظهور النص "وجدتك."
+        Animated.timing(textOpacity, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }).start();
+
+        // الانتقال إلى LivingWorld بعد 3 ثوانٍ
+        setTimeout(() => {
+          router.replace('/living-world');
+        }, 3000);
       } else {
-        setStatus('no_session');
+        setPhase('new_connection');
+
+        // ظهور النص "هل نبدأ؟"
+        Animated.timing(textOpacity, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }).start();
+
+        // الانتقال إلى Genesis بعد 3.5 ثوانٍ
+        setTimeout(() => {
+          router.replace('/genesis');
+        }, 3500);
       }
     } catch (e) {
-      setStatus('no_session');
+      setPhase('new_connection');
+      Animated.timing(textOpacity, {
+        toValue: 1,
+        duration: 1500,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+
+      setTimeout(() => {
+        router.replace('/genesis');
+      }, 3500);
     }
+  };
+
+  const getMessage = () => {
+    if (phase === 'searching') return 'أبحث عن آخر لحظة كنا فيها معًا...';
+    if (phase === 'reconnecting') return 'وجدتك.';
+    return 'هل نبدأ؟';
+  };
+
+  const getSubMessage = () => {
+    if (phase === 'searching') return undefined;
+    if (phase === 'reconnecting') return 'لم تبتعد كثيرًا.';
+    return 'لنبدأ من البداية.';
   };
 
   return (
     <View style={styles.container}>
-      {status === 'checking' && (
-        <>
-          <ActivityIndicator size="large" color="#7C3AED" />
-          <Text style={styles.text}>جارٍ التحقق من الجلسة...</Text>
-        </>
-      )}
-      {status === 'restoring' && (
-        <>
-          <ActivityIndicator size="large" color="#10B981" />
-          <Text style={[styles.text, { color: '#10B981' }]}>تم العثور على جلستك. جارٍ الاستعادة...</Text>
-        </>
-      )}
-      {status === 'no_session' && (
-        <>
-          <Text style={styles.text}>لا توجد جلسة نشطة</Text>
-          <TouchableOpacity style={styles.btn} onPress={() => router.replace('/genesis')}>
-            <Text style={styles.btnText}>بدء جلسة جديدة</Text>
-          </TouchableOpacity>
-        </>
-      )}
+      {/* طبقات الحضور الحية */}
+      <AmbientField />
+      <View style={styles.pulseContainer}>
+        <SoulPulse />
+      </View>
+      <View style={styles.breathContainer}>
+        <BreathingGlow
+          visible={true}
+          color={phase === 'reconnecting' ? '#A78BFA' : '#7C3AED'}
+          speed={phase === 'reconnecting' ? 1.2 : 0.8}
+        />
+      </View>
+
+      {/* الكلمات */}
+      <Animated.View style={[styles.messageContainer, { opacity }]}>
+        <Animated.Text style={[styles.message, { opacity: textOpacity }]}>
+          {getMessage()}
+        </Animated.Text>
+        {getSubMessage() && (
+          <Animated.Text style={[styles.subMessage, { opacity: textOpacity }]}>
+            {getSubMessage()}
+          </Animated.Text>
+        )}
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0014', padding: 32 },
-  text: { color: '#A78BFA', fontSize: 16, marginTop: 16, textAlign: 'center' },
-  btn: { marginTop: 24, backgroundColor: '#7C3AED', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 16 },
-  btnText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A0014',
+  },
+  pulseContainer: {
+    position: 'absolute',
+    top: '40%',
+  },
+  breathContainer: {
+    position: 'absolute',
+    top: '45%',
+  },
+  messageContainer: {
+    position: 'absolute',
+    bottom: '20%',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  message: {
+    color: '#E8E0F0',
+    fontSize: 24,
+    fontWeight: '300',
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  subMessage: {
+    color: '#A78BFA',
+    fontSize: 16,
+    fontWeight: '200',
+    textAlign: 'center',
+    marginTop: 12,
+    letterSpacing: 0.5,
+  },
 });
