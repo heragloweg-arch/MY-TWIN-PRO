@@ -1,18 +1,10 @@
-/**
- * STATE BUS v4.0 — Unified State Store + Event Emitter (Fully Backward Compatible)
- * ================================================================================
- * يجمع بين مخزن الحالة المركزي وأحداث StateBus البسيطة.
- * هذا هو مصدر الحقيقة الوحيد. لا يوجد نسخة أخرى.
- * 
- * تم التحديث ليشمل جميع الدوال والأنواع القديمة لضمان التوافق.
- */
 import { EventBus, EventName } from './EventBus';
 
-// ── الأنواع ───────────────────────────────────────
 export type PresenceLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 export type InterfaceState = 'dormant' | 'aware' | 'attentive' | 'listening' | 'thinking' | 'speaking' | 'remembering' | 'learning' | 'reflecting' | 'proactive' | 'twin';
 export type SpaceEnergy = 'tranquil' | 'warm' | 'focused' | 'energetic' | 'mysterious' | 'protective' | 'tense' | 'serene';
 export type CognitivePhase = 'idle' | 'observe' | 'understand' | 'recall' | 'reason' | 'respond';
+export type SilenceLevel = 0 | 1 | 2 | 3 | 4 | 5;
 
 export interface EmotionalState {
   primaryEmotion: string; intensity: number; valence: 'positive' | 'negative' | 'neutral' | 'mixed'; confidence: number; duration: number; trend: 'improving' | 'worsening' | 'stable';
@@ -55,20 +47,25 @@ const DEFAULT_STATE: TwinState = {
 
 type StateSubscriber = (state: TwinState, prevState: TwinState) => void;
 
-class UnifiedStateBus {
+export class StateBusClass {
   private state: TwinState;
   private prevState: TwinState;
   private subscribers: Set<StateSubscriber> = new Set();
   private eventListeners: Map<string, Array<(event: string, data: any) => void>> = new Map();
+  private _batching = false;
 
   constructor() { this.state = { ...DEFAULT_STATE }; this.prevState = { ...DEFAULT_STATE }; }
 
   getState(): Readonly<TwinState> { return this.state; }
 
   update(partial: Partial<TwinState>): void {
+    if (this._batching) return this.flushLater(partial);
+    this.applyUpdate(partial);
+  }
+
+  private applyUpdate(partial: Partial<TwinState>) {
     this.prevState = { ...this.state };
     this.state = { ...this.state, ...partial };
-
     if (partial.emotion && !Object.is(partial.emotion, this.prevState.emotion)) {
       this.emitEvent(STATE_EVENTS.EMOTION_CHANGED, { from: this.prevState.emotion.primaryEmotion, to: this.state.emotion.primaryEmotion, intensity: this.state.emotion.intensity });
     }
@@ -78,18 +75,36 @@ class UnifiedStateBus {
     if (partial.relationship && !Object.is(partial.relationship, this.prevState.relationship)) {
       this.emitEvent(STATE_EVENTS.BOND_CHANGED, { bondLevel: this.state.relationship.bondLevel, metrics: this.state.relationship });
     }
-
     this.subscribers.forEach(sub => { try { sub(this.state, this.prevState); } catch (e) { console.warn(e); } });
   }
 
-  // 🆕 دالة select المفقودة
+  batch(callback: () => void) {
+    this._batching = true;
+    callback();
+    this._batching = false;
+    this.emitChanges();
+  }
+
+  private flushLater(partial: Partial<TwinState>) {
+    // simplistic batching: just accumulate
+    this.state = { ...this.state, ...partial };
+  }
+
+  private emitChanges() {
+    this.subscribers.forEach(sub => { try { sub(this.state, this.prevState); } catch (e) { console.warn(e); } });
+  }
+
   select<T>(selector: (state: TwinState) => T): T {
     return selector(this.state);
   }
 
   subscribe(subscriber: StateSubscriber): () => void { this.subscribers.add(subscriber); return () => this.subscribers.delete(subscriber); }
 
-  // 🆕 دعم الأحداث المتوافقة مع EventName
+  subscribeTo<T>(selector: (state: TwinState) => T, callback: (value: T) => void): () => void {
+    const listener = (state: TwinState, _prev: TwinState) => callback(selector(state));
+    return this.subscribe(listener);
+  }
+
   on(event: string, callback: (event: string, data: any) => void): () => void {
     if (!this.eventListeners.has(event)) this.eventListeners.set(event, []);
     this.eventListeners.get(event)!.push(callback);
@@ -106,5 +121,5 @@ class UnifiedStateBus {
   reset(): void { this.prevState = { ...this.state }; this.state = { ...DEFAULT_STATE }; this.subscribers.forEach(s => s(this.state, this.prevState)); }
 }
 
-export const stateBus = new UnifiedStateBus();
+export const stateBus = new StateBusClass();
 export const StateBus = stateBus;

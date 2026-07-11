@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing } from 'react-native-reanimated';
+import { withSequence, withTiming } from 'react-native-reanimated';
 import { EventBus } from '../core/EventBus';
 import { audioEngine } from '../core/AudioEngine';
 

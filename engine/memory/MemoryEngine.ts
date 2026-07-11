@@ -421,4 +421,7 @@ export class MemoryEngine {
   }
 }
 
+  async storeLongTerm(category: string, content: string, importance: number = 65, emotion: string = "neutral"): Promise<MemoryEntry> {
+    return this.store(category as MemoryType, content, importance, emotion, [category]);
+  }
 export const memoryEngine = new MemoryEngine();

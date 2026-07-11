@@ -4,6 +4,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSequence, withRepeat,
   Easing, interpolate, Extrapolation,
 } from 'react-native-reanimated';
+import { withSequence, withTiming } from 'react-native-reanimated';
 import { SPACE, RADIUS } from '../../../src/design/tokens/spacing';
 
 interface LivingAvatarProps {

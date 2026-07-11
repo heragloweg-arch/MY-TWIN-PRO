@@ -53,6 +53,3 @@ export { CommercePlugin, commercePlugin } from '../services/CommercePlugin';
 export type { PlanTier, PlanInfo, PurchaseResult } from '../services/CommercePlugin';
 export { SubscriptionService, subscriptionService } from '../services/SubscriptionService';
 export { AdService, adService } from '../services/AdService';
-export { AdService, adService } from '../services/AdService';
-export type { AdStatus, AdReward } from '../services/AdService';
-export { RewardedAdService } from '../../lib/ads';
