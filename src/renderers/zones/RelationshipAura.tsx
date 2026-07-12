@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing } from 'react-native-reanimated';
+import Animated, { withSequence, withTiming,  useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing } from 'react-native-reanimated';
 import { relationshipEngine } from '../../../engine/relationship/RelationshipEngine';
 import { stateBus, STATE_EVENTS } from '../../../src/core/StateBus';
 
@@ -33,10 +33,14 @@ export default function RelationshipAura({ size = 200 }: RelationshipAuraProps) 
 
   const config = PHASE_AURA[phase] || PHASE_AURA.stranger;
 
-  const rings = Array.from({ length: config.rings }).map(() => ({
-    opacity: useSharedValue(0),
-    scale: useSharedValue(0.7),
-  }));
+  // إصلاح: إنشاء SharedValues داخل useRef لتجنب انتهاك قواعد Hooks
+  const ringsRef = useRef(
+    Array.from({ length: 3 }, () => ({
+      opacity: useSharedValue(0),
+      scale: useSharedValue(0.7),
+    }))
+  );
+  const rings = ringsRef.current.slice(0, config.rings);
 
   useEffect(() => {
     rings.forEach((ring, i) => {

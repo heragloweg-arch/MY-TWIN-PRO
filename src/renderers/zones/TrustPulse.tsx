@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming, withDelay, Easing } from 'react-native-reanimated';
-import { withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { withSequence, withTiming,  useSharedValue, useAnimatedStyle, withSequence, withTiming, withDelay, Easing } from 'react-native-reanimated';
 import { relationshipEngine } from '../../../engine/relationship/RelationshipEngine';
 import { stateBus, STATE_EVENTS } from '../../../src/core/StateBus';
 

@@ -30,7 +30,7 @@ export default function SoulPulse() {
 
   useEffect(() => {
     const harmony = soul.resonance.harmony;
-    const speed = 4000 - harmony * 2000; // 2000-4000ms
+    const speed = 4000 - harmony * 2000;
     const intensity = 0.1 + harmony * 0.25;
 
     pulseOpacity.value = withRepeat(
@@ -50,13 +50,10 @@ export default function SoulPulse() {
 
   return (
     <View style={styles.container} pointerEvents="none">
-      {/* الحلقة الخارجية — الرابطة */}
       <Animated.View style={[styles.ring, { borderColor: color, width: 180, height: 180, borderRadius: 90 }, ringStyle]} />
-      {/* النواة — العاطفة */}
       <Animated.View style={[styles.core, { backgroundColor: color, opacity: pulseOpacity }]}>
         <View style={styles.innerDot} />
       </Animated.View>
-      {/* نقاط صغيرة للعمق */}
       {soul.resonance.syncLevel === 'complete' && (
         <View style={styles.particles}>
           {[0, 1, 2].map(i => (

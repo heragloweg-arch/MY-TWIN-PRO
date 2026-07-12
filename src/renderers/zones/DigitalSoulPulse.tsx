@@ -1,10 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing } from 'react-native-reanimated';
+import Animated, { withSequence, withTiming,  useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing } from 'react-native-reanimated';
 import { useTwinState } from '../../../engine/core/TwinState';
 import { stateBus, STATE_EVENTS } from '../../../src/core/StateBus';
-import { twinBrain } from '../../core/TwinBrain';
-import { LivingIntelligence } from '../../core/LivingIntelligence';
 import { RADIUS } from '../../../src/design/tokens/spacing';
 
 type SoulState = 'curious' | 'reflective' | 'protective' | 'inspired' | 'focused' | 'calm' | 'concerned';
@@ -20,12 +18,12 @@ const SOUL_COLORS: Record<SoulState, { primary: string; secondary: string; speed
 };
 
 export default function DigitalSoulPulse() {
+  const twinState = useTwinState();
   const [soulState, setSoulState] = useState<SoulState>('calm');
   const pulseOpacity = useSharedValue(0.15);
   const pulseScale = useSharedValue(0.9);
   const innerPulse = useSharedValue(0.3);
 
-  // خريطة مزاج التوأم إلى SoulState
   const mapMoodToSoul = (mood: string): SoulState => {
     const mapping: Record<string, SoulState> = {
       curious: 'curious',
@@ -41,16 +39,10 @@ export default function DigitalSoulPulse() {
 
   useEffect(() => {
     const updateSoul = () => {
-      const state = useTwinState.getState();
-      const mood = state.emotion || 'neutral';
-
-      // استخدام الحالة الداخلية للتوأم إن أمكن
+      const mood = twinState.emotion || 'neutral';
       let soul: SoulState = mapMoodToSoul(mood);
-
-      // إذا كان التوأم في وضع تفكير عميق
-      if (state.isThinking) soul = 'focused';
-      if (state.isListening) soul = 'curious';
-
+      if (twinState.isThinking) soul = 'focused';
+      if (twinState.isListening) soul = 'curious';
       setSoulState(soul);
     };
 
@@ -62,7 +54,7 @@ export default function DigitalSoulPulse() {
       unsub();
       clearInterval(interval);
     };
-  }, []);
+  }, [twinState.emotion, twinState.isThinking, twinState.isListening]);
 
   useEffect(() => {
     const config = SOUL_COLORS[soulState];

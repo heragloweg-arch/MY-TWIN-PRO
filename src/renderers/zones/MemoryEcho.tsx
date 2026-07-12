@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming, Easing } from 'react-native-reanimated';
-import { withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { withSequence, withTiming,  useSharedValue, useAnimatedStyle, withSequence, withTiming, Easing } from 'react-native-reanimated';
 
 interface MemoryEchoProps {
   visible: boolean;

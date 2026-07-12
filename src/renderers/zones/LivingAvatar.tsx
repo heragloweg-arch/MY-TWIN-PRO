@@ -4,7 +4,6 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSequence, withRepeat,
   Easing, interpolate, Extrapolation,
 } from 'react-native-reanimated';
-import { withSequence, withTiming } from 'react-native-reanimated';
 import { SPACE, RADIUS } from '../../../src/design/tokens/spacing';
 
 interface LivingAvatarProps {
@@ -14,9 +13,9 @@ interface LivingAvatarProps {
   presenceLevel: number;
   emotionalValence: string;
   bondLevel: number;
-  thinkingPhase?: string; // J2: مرحلة التفكير الحالية
-  isThinking?: boolean;   // J2: هل يفكر؟
-  isRemembering?: boolean; // J2: هل يسترجع ذكرى؟
+  thinkingPhase?: string;
+  isThinking?: boolean;
+  isRemembering?: boolean;
 }
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -30,19 +29,16 @@ export default function LivingAvatar({
   const eyeScale = bondLevel < 2 ? 0.5 + bondLevel * 0.25 : 1.0;
   const haloColor = EMOTION_COLORS[emotionalValence] || EMOTION_COLORS.neutral;
 
-  // J13 — Micro Animations: ميل الرأس + تأخير الرمش
   const headTilt = useSharedValue(0);
   const blinkProgress = useSharedValue(0);
 
   useEffect(() => {
-    // ميل الرأس عند التفكير
     if (isThinking) {
       headTilt.value = withTiming(-3, { duration: 400, easing: Easing.out(Easing.ease) });
     } else {
       headTilt.value = withTiming(0, { duration: 600, easing: Easing.inOut(Easing.ease) });
     }
 
-    // رمش طبيعي كل 3-8 ثوانٍ
     const blinkSequence = () => {
       blinkProgress.value = withSequence(
         withTiming(1, { duration: 80 }),
@@ -64,15 +60,14 @@ export default function LivingAvatar({
     transform: [{ scaleY: interpolate(blinkProgress.value, [0, 0.5, 1], [1, 0.1, 1]) }],
   }));
 
-  // J2 — Eye Intelligence: اتجاه النظر حسب الحالة
   const eyeGazeStyle = useAnimatedStyle(() => {
     let translateX = 0;
     let translateY = 0;
 
-    if (isRemembering) { translateX = -4; translateY = -1; } // ينظر لليسار قليلاً للذاكرة
-    else if (thinkingPhase === 'reason' || thinkingPhase === 'understand') { translateX = 0; translateY = 3; } // ينظر للأسفل للتفكير
-    else if (expression === 'warm') { translateX = 0; translateY = -1; } // ينظر للأعلى قليلاً للدفء
-    else { translateX = 0; translateY = 0; } // ينظر مباشرة
+    if (isRemembering) { translateX = -4; translateY = -1; }
+    else if (thinkingPhase === 'reason' || thinkingPhase === 'understand') { translateX = 0; translateY = 3; }
+    else if (expression === 'warm') { translateX = 0; translateY = -1; }
+    else { translateX = 0; translateY = 0; }
 
     return {
       transform: [{ translateX }, { translateY }],
@@ -81,11 +76,8 @@ export default function LivingAvatar({
 
   return (
     <Animated.View style={[styles.container, avatarStyle]}>
-      {/* الحلقة الخارجية */}
       <Animated.View style={[styles.outerRing, { borderColor: haloColor, opacity: 0.08 + breathPhase * 0.1, transform: [{ scale: 0.8 + breathPhase * 0.28 }] }]} />
-      {/* الهالة */}
       <Animated.View style={[styles.halo, { backgroundColor: haloColor, opacity: 0.15 + breathPhase * 0.2 + presenceLevel * 0.04, transform: [{ scale: 0.7 + breathPhase * 0.45 }] }]} />
-      {/* النواة */}
       <Animated.View style={[styles.core, { opacity: 0.35 + breathPhase * 0.35 + presenceLevel * 0.03, transform: [{ scale: 0.88 + breathPhase * 0.12 }] }]}>
         {eyesOpen && (
           <Animated.View style={[styles.eyesContainer, blinkStyle]}>

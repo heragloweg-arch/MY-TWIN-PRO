@@ -1,28 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, withRepeat, withDelay, Easing } from 'react-native-reanimated';
+import Animated, { withSequence, withTiming, 
+  useSharedValue,
+  withTiming,
+  withSequence,
+  withRepeat,
+  withDelay,
+  Easing,
+} from 'react-native-reanimated';
 import { relationshipEngine } from '../../../engine/relationship/RelationshipEngine';
 
 const { width, height } = Dimensions.get('window');
 
-interface ParticleData {
-  id: number;
-  x: number;
-  y: number;
-  opacity: Animated.SharedValue<number>;
-  scale: Animated.SharedValue<number>;
-}
-
 export default function ConnectionField({ visible = true }: { visible?: boolean }) {
-  // ✅ إنشاء SharedValues خارج useState
+  // ✅ الحل الجذري: إنشاء SharedValues داخل useRef (لا يخالف قواعد Hooks)
   const opacityValues = useRef(
     Array.from({ length: 6 }, () => useSharedValue(0))
   ).current;
-  
+
   const scaleValues = useRef(
     Array.from({ length: 6 }, () => useSharedValue(0.5))
   ).current;
 
+  // بيانات ثابتة للجسيمات
   const [particles] = useState(() =>
     Array.from({ length: 6 }, (_, i) => ({
       id: i,
@@ -37,7 +37,7 @@ export default function ConnectionField({ visible = true }: { visible?: boolean 
     const bondLevel = relationshipEngine.getBondLevel();
     const maxParticles = Math.floor(bondLevel / 20);
 
-    particles.forEach((p, i) => {
+    particles.forEach((_, i) => {
       if (i >= maxParticles) return;
 
       opacityValues[i].value = withDelay(
