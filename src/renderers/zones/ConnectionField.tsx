@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, withDelay, Easing } from 'react-native-reanimated';
-import { withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, withRepeat, withDelay, Easing } from 'react-native-reanimated';
 import { relationshipEngine } from '../../../engine/relationship/RelationshipEngine';
 
 const { width, height } = Dimensions.get('window');
@@ -15,13 +14,20 @@ interface ParticleData {
 }
 
 export default function ConnectionField({ visible = true }: { visible?: boolean }) {
-  const [particles] = useState<ParticleData[]>(() =>
-    Array.from({ length: 6 }).map((_, i) => ({
+  // ✅ إنشاء SharedValues خارج useState
+  const opacityValues = useRef(
+    Array.from({ length: 6 }, () => useSharedValue(0))
+  ).current;
+  
+  const scaleValues = useRef(
+    Array.from({ length: 6 }, () => useSharedValue(0.5))
+  ).current;
+
+  const [particles] = useState(() =>
+    Array.from({ length: 6 }, (_, i) => ({
       id: i,
       x: width / 2 + (Math.random() - 0.5) * width * 0.6,
       y: height * 0.3 + Math.random() * height * 0.2,
-      opacity: useSharedValue(0),
-      scale: useSharedValue(0.5),
     }))
   );
 
@@ -34,7 +40,7 @@ export default function ConnectionField({ visible = true }: { visible?: boolean 
     particles.forEach((p, i) => {
       if (i >= maxParticles) return;
 
-      p.opacity.value = withDelay(
+      opacityValues[i].value = withDelay(
         i * 500,
         withRepeat(
           withSequence(
@@ -46,7 +52,7 @@ export default function ConnectionField({ visible = true }: { visible?: boolean 
         ),
       );
 
-      p.scale.value = withDelay(
+      scaleValues[i].value = withDelay(
         i * 500,
         withRepeat(
           withSequence(
@@ -64,7 +70,7 @@ export default function ConnectionField({ visible = true }: { visible?: boolean 
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {particles.map((p) => (
+      {particles.map((p, i) => (
         <Animated.View
           key={p.id}
           style={[
@@ -72,8 +78,8 @@ export default function ConnectionField({ visible = true }: { visible?: boolean 
             {
               left: p.x,
               top: p.y,
-              opacity: p.opacity,
-              transform: [{ scale: p.scale }],
+              opacity: opacityValues[i],
+              transform: [{ scale: scaleValues[i] }],
             },
           ]}
         />
