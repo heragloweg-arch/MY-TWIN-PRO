@@ -16,14 +16,23 @@ import { emotionEngine } from '../emotion/EmotionEngine';
 import { relationshipEngine } from '../relationship/RelationshipEngine';
 import { memoryEngine } from '../memory/MemoryEngine';
 
+// النوع المفقود للسياق
+interface BehaviorContext {
+  userActivity?: 'typing' | 'idle' | 'speaking';
+  hasPendingMessage?: boolean;
+  needsMemorySearch?: boolean;
+  topic?: string;
+  processingComplete?: boolean;
+  userEmotion?: string;
+}
+
 type BehaviorRule = {
-  condition: (context: any) => boolean;
-  action: (context: any) => Promise<void>;
+  condition: (context: BehaviorContext) => boolean;
+  action: (context: BehaviorContext) => Promise<void>;
   priority: number;
 };
 
 export class BehaviorEngine {
-
   private contextMode: string = "general";
   setContextMode(mode: string): void { this.contextMode = mode; stateBus.emit("context:aura_changed", { mode }); }
   getContextMode(): string { return this.contextMode; }
@@ -48,7 +57,7 @@ export class BehaviorEngine {
 
     // قاعدة: عندما يتوقف المستخدم عن الكتابة → التوأم يفكر
     this.addRule({
-      condition: (ctx) => ctx.userActivity === 'idle' && ctx.hasPendingMessage,
+      condition: (ctx) => ctx.userActivity === 'idle' && !!ctx.hasPendingMessage,
       action: async () => {
         stateMachine.safeTransition('thinking');
         awarenessEngine.update('thinking');
@@ -60,7 +69,7 @@ export class BehaviorEngine {
     // قاعدة: عندما يتكلم المستخدم → التوأم يستمع
     this.addRule({
       condition: (ctx) => ctx.userActivity === 'speaking',
-      action: async () => {
+      action: async (ctx) => {
         presenceEngine.update('speaking');
         awarenessEngine.update('listening');
         emotionEngine.reactToUserEmotion(ctx.userEmotion || 'neutral');
@@ -70,10 +79,10 @@ export class BehaviorEngine {
 
     // قاعدة: بحث في الذاكرة عند الحاجة
     this.addRule({
-      condition: (ctx) => ctx.needsMemorySearch && ctx.topic,
-      action: async () => {
+      condition: (ctx) => !!ctx.needsMemorySearch && !!ctx.topic,
+      action: async (ctx) => {
         stateMachine.safeTransition('searching_memory');
-        const memories = await memoryEngine.retrieve(ctx.topic, 3);
+        const memories = await memoryEngine.retrieve(ctx.topic!, 3);
         stateBus.emit('behavior:memories_found', { memories, topic: ctx.topic });
         stateMachine.safeTransition('thinking');
       },
@@ -82,7 +91,7 @@ export class BehaviorEngine {
 
     // قاعدة: بعد التفكير → تحديث الثقة
     this.addRule({
-      condition: (ctx) => ctx.processingComplete,
+      condition: (ctx) => !!ctx.processingComplete,
       action: async () => {
         awarenessEngine.boostConfidence(3);
         awarenessEngine.update('speaking');
@@ -99,7 +108,7 @@ export class BehaviorEngine {
   /**
    * تنفيذ السلوك المناسب بناءً على السياق
    */
-  async process(context: any): Promise<void> {
+  async process(context: BehaviorContext): Promise<void> {
     if (this.isProcessing) return;
     this.isProcessing = true;
 
@@ -164,7 +173,10 @@ export class BehaviorEngine {
    * إعادة التعيين إلى حالة الخمول
    */
   reset(): void {
-    useTwinState.getState().resetToIdle();
+    useTwinState.getState().setMode('listening');
+    useTwinState.getState().setIsProcessing(false);
+    useTwinState.getState().setIsThinking(false);
+    useTwinState.getState().setIsSpeaking(false);
     stateMachine.reset();
     presenceEngine.fade();
   }

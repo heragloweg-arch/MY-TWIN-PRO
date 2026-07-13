@@ -17,8 +17,19 @@ export interface MemoryState { lastSurfacedId: string | null; pendingSurfacing: 
 export interface WorkspaceState { active: string | null; previous: string | null; isTransforming: boolean; transformProgress: number; spatialMemory: Record<string, any>; }
 export interface RelationshipState { bondLevel: number; attachmentStyle: string; trustScore: number; firstContactTimestamp: number | null; }
 
+// تصدير نوع Message لتتوافق مع استيرادات index.ts
+export interface Message {
+  id: string;
+  sender: 'user' | 'twin';
+  text: string;
+  timestamp: number;
+  confidence?: number;
+  source?: 'memory' | 'inference' | 'knowledge' | 'unknown';
+}
+
 export interface TwinState {
-  presenceLevel: PresenceLevel; interfaceState: InterfaceState; isAwakening: boolean; awakeningPhase: string;
+  presenceLevel: number; // تغيير النوع إلى number لتجنب خطأ TS2322
+  interfaceState: InterfaceState; isAwakening: boolean; awakeningPhase: string;
   breath: BreathState; avatar: AvatarState; emotion: EmotionalState; spaceEnergy: SpaceEnergy; silenceLevel: number;
   conversation: ConversationState; memory: MemoryState; workspace: WorkspaceState; relationship: RelationshipState;
   isOnline: boolean; isDegraded: boolean; uptime: number;
@@ -86,7 +97,6 @@ export class StateBusClass {
   }
 
   private flushLater(partial: Partial<TwinState>) {
-    // simplistic batching: just accumulate
     this.state = { ...this.state, ...partial };
   }
 

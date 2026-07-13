@@ -1,9 +1,6 @@
 import { EventBus } from '../core/EventBus';
 import { capabilityGate } from '../services/CapabilityGate';
 
-/**
- * أنواع القدرات المدعومة
- */
 export type CapabilityType =
   | 'study'
   | 'business'
@@ -22,16 +19,6 @@ interface ResolverResult {
   reason: string;
 }
 
-/**
- * CAPABILITY RESOLVER
- * ====================
- * لا ينفذ القدرة. فقط يقرر أي قدرة يحتاجها المستخدم.
- *
- * يقرأ نية المستخدم من النص، ويعيد نوع القدرة.
- * ثم يصدر حدثاً ليحوّل LivingWorld إلى الحالة المناسبة.
- *
- * 0 محركات جديدة. طبقة توزيع فقط.
- */
 export class CapabilityResolver {
   private intentMap: Record<CapabilityType, { ar: string[]; en: string[] }> = {
     study: {
@@ -70,11 +57,12 @@ export class CapabilityResolver {
       ar: ['شغل', 'اطفئ', 'نور', 'مكيف', 'منزل', 'غرفة', 'إضاءة', 'light', 'ac'],
       en: ['light', 'ac', 'home', 'turn on', 'turn off', 'room', 'temperature'],
     },
+    general: {
+      ar: [],
+      en: [],
+    },
   };
 
-  /**
-   * تحديد القدرة المناسبة من نص المستخدم.
-   */
   resolve(message: string): ResolverResult {
     const text = message.toLowerCase().trim();
 
@@ -101,7 +89,6 @@ export class CapabilityResolver {
 
     const confidence = Math.min(bestScore * 2, 1.0);
 
-    // إذا كانت الثقة منخفضة، يبقى عاماً
     if (confidence < 0.4) {
       return { capability: 'general', confidence: 0.3, reason: 'low_confidence' };
     }
@@ -109,14 +96,11 @@ export class CapabilityResolver {
     return { capability: bestMatch, confidence, reason: matchReason };
   }
 
-  /**
-   * تفعيل قدرة — يصدر حدث تحويل العالم.
-   */
-  /** التحقق من توفر القدرة قبل التفعيل */
   canActivate(capability: CapabilityType): boolean {
     if (capability === 'general') return true;
     return capabilityGate.isCapabilityAvailable(capability);
   }
+
   activate(capability: CapabilityType): void {
     if (capability === 'general') return;
 
@@ -132,9 +116,6 @@ export class CapabilityResolver {
     });
   }
 
-  /**
-   * إلغاء تفعيل القدرة — العودة للعالم الأساسي.
-   */
   deactivate(): void {
     EventBus.emit('WORKSPACE_CHANGE_REQUESTED', {
       workspace: null,

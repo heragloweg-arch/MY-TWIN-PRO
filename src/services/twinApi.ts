@@ -1,4 +1,4 @@
-import { httpClient } from '../../lib/httpClient'; // المسار من src/services/ إلى lib/
+import { httpClient } from '../../lib/httpClient';
 
 export interface ChatResponse {
   reply: string;
@@ -40,6 +40,20 @@ export async function sendMessage(
     user_id: userId,
   });
   return response.data as ChatResponse;
+}
+
+export async function streamMessage(
+  message: string,
+  onChunk: (text: string) => void,
+  onDone: () => void,
+  onError: (err: string) => void,
+  lang?: string
+): Promise<void> {
+  try {
+    await httpClient.apiStream('/api/chat/stream', { message, lang }, onChunk, onDone, onError);
+  } catch (e: any) {
+    onError(e.message || 'Stream error');
+  }
 }
 
 export async function getTwinState(userId: string, lang: string): Promise<TwinStateResponse> {

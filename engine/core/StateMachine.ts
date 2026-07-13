@@ -6,13 +6,12 @@
  *
  * التكامل:
  *   - تقرأ وتكتب عبر useTwinState (Zustand)
- *   - تصدر الأحداث عبر stateBus القديم
+ *   - تصدر الأحداث عبر stateBus الموحد
  *   - يستدعيها BehaviorEngine
- *   - تتزامن مع src/core/StateBus الجديد عبر StoreSyncBridge لاحقاً
  */
 
 import { useTwinState, ConsciousnessMode } from './TwinState';
-import { stateBus, STATE_EVENTS } from './StateBus';
+import { stateBus, STATE_EVENTS } from '../../src/core/StateBus';
 
 // ═══════════════════════════════════════════════════════
 // تعريف الانتقالات الصالحة بين حالات الوعي
@@ -46,9 +45,9 @@ const STATE_PRIORITY: Record<ConsciousnessMode, number> = {
   speaking:          5,
 };
 
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 // وصف الحالة للتصحيح والمراقبة
-// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
 const STATE_LABELS: Record<ConsciousnessMode, string> = {
   sleeping:         'نائم',
   listening:        'يستمع',
@@ -180,7 +179,7 @@ export class StateMachine {
     store.setIsSpeaking(to === 'speaking');
     store.setIsListening(to === 'listening');
 
-    // إصدار الحدث
+    // إصدار الحدث عبر StateBus الموحد
     stateBus.emit(STATE_EVENTS.MODE_CHANGED, {
       from,
       to,

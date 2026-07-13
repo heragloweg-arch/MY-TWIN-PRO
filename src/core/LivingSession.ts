@@ -6,9 +6,6 @@ import { relationshipEngine } from '../../engine/relationship/RelationshipEngine
 import { emotionEngine } from '../../engine/emotion/EmotionEngine';
 import { personalityCoordinator } from '../coordinators/PersonalityCoordinator';
 
-/**
- * بذرة الجلسة — لماذا بدأت
- */
 export type SessionSeed =
   | 'manual_conversation'
   | 'morning_check_in'
@@ -23,9 +20,6 @@ export type SessionSeed =
   | 'creative_work'
   | 'general';
 
-/**
- * هدف الجلسة
- */
 export type SessionGoal =
   | 'learn'
   | 'create'
@@ -38,9 +32,6 @@ export type SessionGoal =
   | 'build'
   | 'general';
 
-/**
- * نتيجة الجلسة
- */
 export type SessionOutcome =
   | 'completed'
   | 'interrupted'
@@ -49,9 +40,6 @@ export type SessionOutcome =
   | 'unresolved'
   | 'continues_later';
 
-/**
- * هوية الجلسة
- */
 export type SessionIdentity =
   | 'study'
   | 'creative'
@@ -60,9 +48,6 @@ export type SessionIdentity =
   | 'silent'
   | 'general';
 
-/**
- * طقس الجلسة
- */
 export type SessionWeather =
   | 'calm'
   | 'warm'
@@ -72,9 +57,6 @@ export type SessionWeather =
   | 'fast'
   | 'bright';
 
-/**
- * انتقال داخل الجلسة
- */
 interface JourneyStep {
   from: string | null;
   to: string;
@@ -83,9 +65,6 @@ interface JourneyStep {
   timestamp: number;
 }
 
-/**
- * نقطة على القوس العاطفي
- */
 interface EmotionalArcPoint {
   emotion: string;
   intensity: number;
@@ -93,9 +72,6 @@ interface EmotionalArcPoint {
   timestamp: number;
 }
 
-/**
- * لحظة مقدسة
- */
 interface SacredMoment {
   type: string;
   title: string;
@@ -104,9 +80,6 @@ interface SacredMoment {
   timestamp: number;
 }
 
-/**
- * لقطة تأملية — تلتقط عند نهاية الجلسة
- */
 interface ReflectionSnapshot {
   emotion: string;
   intensity: number;
@@ -118,10 +91,7 @@ interface ReflectionSnapshot {
   timestamp: number;
 }
 
-/**
- * حالة الجلسة الكاملة
- */
-interface SessionState {
+export interface SessionState {
   id: string;
   seed: SessionSeed;
   identity: SessionIdentity;
@@ -146,21 +116,6 @@ interface SessionState {
   isActive: boolean;
 }
 
-/**
- * LIVING SESSION MANAGER v2.0
- * ============================
- * يدير الجلسة كفصل من حياة التوأم مع المستخدم.
- *
- * الإضافات الست:
- *   1. Session Seed — لماذا بدأت هذه الجلسة؟
- *   2. Session Goal — ما هدفها؟
- *   3. Session Outcome — كيف انتهت؟
- *   4. Sacred Moments Index — لحظة أساسية + ثانوية
- *   5. Continuation Token — Resume أم New Session؟
- *   6. Reflection Snapshot — آخر لقطة قبل الإغلاق
- *
- * 0 محركات جديدة. طبقة زمن فقط.
- */
 export class LivingSession {
   private session: SessionState | null = null;
   private lastSessionId: string | null = null;
@@ -169,13 +124,9 @@ export class LivingSession {
   private inactivityTimer: ReturnType<typeof setTimeout> | null = null;
   private goalDetectionTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /**
-   * بدء جلسة جديدة
-   */
   start(seed: SessionSeed = 'general'): SessionState {
     const now = Date.now();
 
-    // هل هذه استئناف لجلسة سابقة؟
     const continuationToken = this.lastSessionId || null;
     const isResume = !!continuationToken;
 
@@ -233,9 +184,6 @@ export class LivingSession {
     return this.session;
   }
 
-  /**
-   * إيقاف مؤقت (خروج للتطبيقات الأخرى)
-   */
   pause(): void {
     if (!this.session?.isActive) return;
     this.session.pausedAt = Date.now();
@@ -250,9 +198,6 @@ export class LivingSession {
     console.log('[LivingSession] ⏸️ متوقفة مؤقتاً');
   }
 
-  /**
-   * استئناف الجلسة
-   */
   resume(): void {
     if (!this.session || this.session.isActive) return;
     if (this.session.pausedAt) {
@@ -267,9 +212,6 @@ export class LivingSession {
     console.log('[LivingSession] ▶️ استؤنفت');
   }
 
-  /**
-   * إنهاء الجلسة
-   */
   end(exitReason: string = 'user_closed', outcome?: SessionOutcome): SessionState | null {
     if (!this.session) return null;
 
@@ -278,7 +220,6 @@ export class LivingSession {
     const durationMs = endedAt - this.session.startedAt - this.session.totalPausedMs;
     const durationMin = Math.round(durationMs / 60000);
 
-    // آخر نقطة عاطفية
     this.session.emotionalArc.push({
       emotion: emotionEngine.getCurrentEmotion(),
       intensity: emotionEngine.getIntensity(),
@@ -286,10 +227,8 @@ export class LivingSession {
       timestamp: endedAt,
     });
 
-    // نتيجة الجلسة
     this.session.outcome = outcome || this.detectOutcome(exitReason, durationMin);
 
-    // لقطة تأملية
     this.session.reflectionSnapshot = {
       emotion: emotionEngine.getCurrentEmotion(),
       intensity: emotionEngine.getIntensity(),
@@ -301,16 +240,13 @@ export class LivingSession {
       timestamp: endedAt,
     };
 
-    // فهرسة اللحظات المقدسة
     this.indexSacredMoments();
 
-    // حساب العمق
     const avgIntensity = this.session.emotionalArc.reduce((sum, p) => sum + p.intensity, 0) / this.session.emotionalArc.length;
     this.session.depthScore = avgIntensity;
 
     const bondDelta = relationshipEngine.getBondLevel() - this.session.bondAtStart;
 
-    // حفظ للجلسة القادمة
     this.lastSessionId = this.session.id;
 
     this.saveToMemory(durationMin, bondDelta);
@@ -347,47 +283,23 @@ export class LivingSession {
     return finalSession;
   }
 
-  /**
-   * هل هناك جلسة نشطة؟
-   */
   isActive(): boolean { return this.session?.isActive ?? false; }
-
-  /**
-   * الجلسة الحالية
-   */
   getCurrent(): SessionState | null { return this.session; }
-
-  /**
-   * آخر جلسة
-   */
   getLastSessionId(): string | null { return this.lastSessionId; }
 
-  /**
-   * إضافة لحظة مقدسة
-   */
   addSacredMoment(type: string, title: string, description: string): void {
     if (!this.session) return;
     const moment: SacredMoment = { type, title, description, importance: 90, timestamp: Date.now() };
     this.session.sacredMoments.push(moment);
-
-    // فهرسة فورية
     this.indexSacredMoments();
-
     EventBus.emit('SACRED_MOMENT', moment);
   }
 
-  /**
-   * تحديث هدف الجلسة
-   */
   updateGoal(goal: SessionGoal): void {
     if (!this.session) return;
     this.session.goal = goal;
     EventBus.emit('SESSION_GOAL_CHANGED', { sessionId: this.session.id, goal });
   }
-
-  // ═══════════════════════════════════════════════════
-  // Private — الكشف عن بذرة الجلسة وهدفها
-  // ═══════════════════════════════════════════════════
 
   private detectSessionIdentity(): SessionIdentity {
     const emotion = emotionEngine.getCurrentEmotion();
@@ -439,9 +351,6 @@ export class LivingSession {
     this.session.secondarySacredMoment = sorted.length > 1 ? sorted[1] : null;
   }
 
-  // ═══════════════════════════════════════════════════
-  // Private — اكتشاف الهدف بعد دقيقة
-  // ═══════════════════════════════════════════════════
   private startGoalDetection(): void {
     this.goalDetectionTimer = setTimeout(() => {
       if (!this.session?.isActive) return;
@@ -453,10 +362,6 @@ export class LivingSession {
       else if (worlds.includes('content_creator')) this.updateGoal('create');
     }, 60000);
   }
-
-  // ═══════════════════════════════════════════════════
-  // Private — بقية الدوال (لم تتغير)
-  // ═══════════════════════════════════════════════════
 
   private bindJourneyEvents(): void {
     this.journeyUnsubscribers.push(

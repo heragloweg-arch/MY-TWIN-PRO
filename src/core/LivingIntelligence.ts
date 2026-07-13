@@ -32,6 +32,8 @@ import { identityEngine } from '../coordinators/IdentityEngine';
 import { runtimeHealthMonitor } from './RuntimeHealthMonitor';
 import { soulEvolutionHistory } from './SoulEvolutionHistory';
 import { emotionAudioBridge } from './EmotionAudioBridge';
+import { Emotion } from '../../engine/core/TwinState';
+import { PresenceLevel } from './StateBus';
 
 interface EmotionalState {
   primaryEmotion: string; intensity: number;
@@ -126,7 +128,7 @@ export class LivingIntelligence {
     livingSession.end('app_close');
     dailyLifeController.stop();
     livingNotifications.stop();
-    livingPresenceCoordinator.stop();
+    livingPresenceCoordinator.stop?.();
     longTermEvolution.stop();
     emotionAudioBridge.stop();
     if (this.runtimeInterval) { clearInterval(this.runtimeInterval); this.runtimeInterval = null; }
@@ -153,7 +155,7 @@ export class LivingIntelligence {
     if (chatResult.twin_emotional_state) {
       const es = chatResult.twin_emotional_state;
       emotionEngine.setEmotion(
-        es.real_emotion || es.current_emotion || 'neutral',
+        (es.real_emotion || es.current_emotion || 'neutral') as Emotion,
         es.intensity || 0.5
       );
       EventBus.emit('EMOTIONAL_STATE_CHANGED', {
@@ -220,7 +222,7 @@ export class LivingIntelligence {
       if (this.state.emotionalDrift > 1) this.state.emotionalDrift = 1;
       if (secondsSinceLastInteraction > 300) { this.state.energyLevel = Math.max(0.1, this.state.energyLevel - 0.002); }
       if (Math.floor(now / 10000) !== Math.floor((now - 1000) / 10000)) {
-        const presenceLevel = this.calculatePresenceLevel(secondsSinceLastInteraction);
+        const presenceLevel = this.calculatePresenceLevel(secondsSinceLastInteraction) as PresenceLevel;
         StateBus.update({ presenceLevel });
       }
       const spaceEnergy = this.calculateSpaceEnergy(secondsSinceLastInteraction);

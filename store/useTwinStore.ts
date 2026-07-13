@@ -1,7 +1,8 @@
 /**
  * TWIN STORE v2.0 – الواجهة الموحدة (Facade)
  * ==============================================
- * يجمع كل المتاجر المتخصصة تحت واجهة واحدة للتوافق مع الشاشات القديمة.
+ * يجمع كل المتاجر المتخصصة تحت واجهة واحدة.
+ * الآن مع دعم المُحدِّدات (Selectors) لتلبية احتياجات جميع الأجزاء.
  */
 import { useTwinCoreStore, TwinCore, Tier, TwinGender, TwinStyle, ReplyStyle, Theme, Lang, VoicePersonality } from './useTwinCoreStore';
 import { useCreditsStore } from './useCreditsStore';
@@ -13,7 +14,8 @@ import { useAwarenessStore } from './useAwarenessStore';
 export { useTwinCoreStore, useCreditsStore, useCapabilityStore, useConversationStore, useRelationshipStore, useAwarenessStore };
 export type { Tier, TwinGender, TwinStyle, ReplyStyle, Theme, Lang, VoicePersonality, ChatMessage };
 
-export function useTwinStore() {
+// الدالة المساعدة لتجميع الحالة الكاملة
+function useFullState() {
   const core = useTwinCoreStore();
   const credits = useCreditsStore();
   const capability = useCapabilityStore();
@@ -80,4 +82,10 @@ export function useTwinStore() {
     resetToDefaults: () => { core.reset(); relationship.reset(); awareness.reset(); },
     logout: () => { core.reset(); relationship.reset(); awareness.reset(); credits.resetDaily(); },
   };
+}
+
+// التصدير الجديد الذي يقبل مُحدِّد (Selector)
+export function useTwinStore<T = ReturnType<typeof useFullState>>(selector?: (state: ReturnType<typeof useFullState>) => T): T {
+  const fullState = useFullState();
+  return selector ? selector(fullState) : (fullState as unknown as T);
 }
