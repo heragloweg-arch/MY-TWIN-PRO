@@ -39,8 +39,9 @@ export class IdentityCoordinator {
   }
 
   private deriveVoiceFromDNA(dna: PersonalityDNA, phase: string): VoiceIdentity {
+    const energy = (dna.initiative + dna.curiosity) / 2;
     const voice: VoiceIdentity = {
-      speed: dna.energy ? (dna.energy > 0.7 ? 'fast' : 'medium') : 'medium',
+      speed: energy > 0.7 ? 'fast' : energy > 0.4 ? 'medium' : 'slow',
       tone: dna.empathy > 0.8 ? 'warm' : phase === 'stranger' ? 'formal' : 'neutral',
       sentenceLength: dna.reflection > 0.8 ? 'long' : dna.logic > 0.7 ? 'medium' : 'short',
       silenceUsage: dna.calmness > 0.8 ? 'frequent' : dna.initiative > 0.7 ? 'minimal' : 'moderate',

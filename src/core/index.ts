@@ -20,7 +20,7 @@ export type { ThinkingPhase, BrainResponse } from './TwinBrain';
 export { LivingIntelligence, livingIntelligence } from './LivingIntelligence';
 export type { AssembledContext } from './LivingIntelligence';
 
-export { PerformanceMonitor, performanceMonitor } from './PerformanceMonitor';
+export { PerformanceMonitorClass as PerformanceMonitor, performanceMonitor } from './PerformanceMonitor';
 
 export { LivingSession, livingSession } from './LivingSession';
 export type { SessionSeed, SessionGoal, SessionOutcome, SessionIdentity, SessionWeather } from './LivingSession';

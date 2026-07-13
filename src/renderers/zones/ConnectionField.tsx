@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import Animated, { withSequence, withTiming, 
+import Animated, {
   useSharedValue,
   withTiming,
   withSequence,

@@ -34,7 +34,7 @@ export class GrowthCoordinator {
   analyzeEvolution(): {
     bondVelocity: number;
     personalityDrift: number;
-    maturityLevel: 'newborn' | 'growing' | 'maturing' | 'mature' | 'wise';
+    maturityLevel: string;
   } {
     if (this.history.length < 2) {
       return { bondVelocity: 0, personalityDrift: 0, maturityLevel: 'newborn' };
@@ -54,7 +54,7 @@ export class GrowthCoordinator {
 
     const bond = relationshipEngine.getBondLevel();
     const phase = relationshipEngine.getPhase();
-    let maturityLevel: GrowthSnapshot['maturityLevel'] = 'newborn';
+    let maturityLevel = 'newborn';
     if (phase === 'soulmate') maturityLevel = 'wise';
     else if (phase === 'close_friend') maturityLevel = 'mature';
     else if (bond > 40) maturityLevel = 'maturing';

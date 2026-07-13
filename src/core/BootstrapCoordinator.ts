@@ -30,9 +30,12 @@ export class BootstrapCoordinator {
     this.phase = 'searching';
     const sessionRestore = await authService.checkSessionRestore();
     
+    let wasReturning = false;
+
     if (sessionRestore.canRestore && sessionRestore.user_id) {
       this.userId = sessionRestore.user_id;
       this.phase = 'found';
+      wasReturning = true;
       
       if (sessionRestore.lastSessionId) {
         await authService.saveLastSession(sessionRestore.lastSessionId);
@@ -42,8 +45,10 @@ export class BootstrapCoordinator {
       if (authed) {
         this.userId = (await authService.getUserId()) || '';
         this.phase = 'found';
+        wasReturning = true;
       } else {
         this.phase = 'new_journey';
+        wasReturning = false;
       }
     }
     
@@ -66,7 +71,7 @@ export class BootstrapCoordinator {
     return {
       phase: this.phase,
       userId: this.userId,
-      isReturning: this.phase === 'found',
+      isReturning: wasReturning,
     };
   }
 

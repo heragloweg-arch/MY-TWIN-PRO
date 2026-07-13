@@ -16,7 +16,7 @@ interface PerformanceSnapshot {
 
 type WarningCallback = (message: string, snapshot: PerformanceSnapshot) => void;
 
-class PerformanceMonitorClass {
+export class PerformanceMonitorClass {
   private frames = 0;
   private lastFpsCheck = 0;
   private currentFps = 60;

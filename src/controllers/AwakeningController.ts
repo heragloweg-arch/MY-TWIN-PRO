@@ -1,7 +1,7 @@
 /**
  * AWAKENING CONTROLLER v1.0 — متحكم طقس الاستقبال
  * ===================================================
- * يستبدل setTimeout في LivingSpace.
+ * يستبدل setTimeout في LivingWorld.
  * يدير مراحل الـ Awakening بشكل Event-Driven.
  *
  * المراحل:
@@ -14,7 +14,6 @@
  * يتكامل مع:
  *   - StateBus الجديد (للحالة)
  *   - EventBus الجديد (للأحداث)
- *   - useTwinState (للوعي)
  */
 
 import { StateBus } from '../core/StateBus';
@@ -40,7 +39,7 @@ export interface AwakeningState {
 
 export class AwakeningController {
   private currentPhase: AwakeningPhase = 'presence';
-  private timers: NodeJS.Timeout[] = [];
+  private timers: ReturnType<typeof setTimeout>[] = [];
   private onStateChange?: (state: AwakeningState) => void;
 
   /**

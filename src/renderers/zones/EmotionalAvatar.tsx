@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View, Text, Image } from 'react-native';
+import { Animated, StyleSheet, View, Text } from 'react-native';
 import { Audio } from 'expo-av';
 import { useTwinStore } from '../../../store/useTwinStore';
 import { useTheme } from '../../../engine/theme';
@@ -34,11 +34,6 @@ interface Props {
   playSound?: boolean;
 }
 
-// صورة الخلفية الكونية (تم إنشاؤها مسبقاً)
-const COSMIC_BG = require('../../../assets/bg_cosmic_dark.png');
-// صوت النبض (اختياري عند تغير العاطفة)
-const PULSE_SOUND = require('../../../assets/pulse.mp3');
-
 export default function EmotionalAvatar({
   emotion,
   mood,
@@ -50,8 +45,9 @@ export default function EmotionalAvatar({
   const theme = useTheme();
   const isDark = theme?.isDark ?? true;
 
-  const trust = useTwinStore((s) => s.relationshipDims?.trust ?? 0);
-  const attachment = useTwinStore((s) => s.relationshipDims?.attachment ?? 0);
+  const { relationshipDims } = useTwinStore() as any;
+  const trust: number = relationshipDims?.trust ?? 0;
+  const attachment: number = relationshipDims?.attachment ?? 0;
 
   const effectiveEmotion = emotion || mood || 'neutral';
   const config = EMOTION_CONFIG[effectiveEmotion] || EMOTION_CONFIG.neutral;
@@ -69,9 +65,8 @@ export default function EmotionalAvatar({
     }
     previousEmotion.current = effectiveEmotion;
 
-    // تشغيل صوت النبض الكوني عند تغير المشاعر
     if (playSound) {
-      Audio.Sound.createAsync(PULSE_SOUND, { shouldPlay: true })
+      Audio.Sound.createAsync(require('../../../assets/pulse.mp3'), { shouldPlay: true })
         .then(({ sound }) => sound.playAsync())
         .catch(() => {});
     }
@@ -91,13 +86,7 @@ export default function EmotionalAvatar({
 
   return (
     <View style={styles.outerContainer}>
-      {/* خلفية كونية دائرية */}
       <View style={[styles.cosmicWrapper, { width: bgSize, height: bgSize, borderRadius: bgSize / 2 }]}>
-        <Image
-          source={COSMIC_BG}
-          style={[styles.cosmicBg, { width: bgSize, height: bgSize, borderRadius: bgSize / 2 }]}
-          resizeMode="cover"
-        />
         <Animated.View
           style={[
             styles.ring,
@@ -122,7 +111,6 @@ export default function EmotionalAvatar({
         </Animated.View>
       </View>
 
-      {/* مؤشرات أبعاد العلاقة */}
       <View style={[styles.indicators, { backgroundColor: isDark ? '#2D1B4D' : '#F3F4F6' }]}>
         <View style={[styles.indicatorDot, { backgroundColor: color }]} />
         <View style={[styles.indicatorDot, { backgroundColor: trust > 60 ? '#3B82F6' : '#6B7280' }]} />
@@ -139,10 +127,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
     marginBottom: 4,
-  },
-  cosmicBg: {
-    position: 'absolute',
-    opacity: 0.35,
   },
   ring: {
     justifyContent: 'center',

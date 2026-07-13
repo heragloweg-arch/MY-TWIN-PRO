@@ -7,6 +7,7 @@
 
 import { StateBus, PresenceLevel, InterfaceState, BreathState, AvatarState, SpaceEnergy } from './StateBus';
 import { EventBus } from './EventBus';
+import { subscriptionService } from '../services/SubscriptionService';
 
 // ── Runtime Status ───────────────────────────────────
 export type RuntimeStatus = 'initializing' | 'running' | 'paused' | 'stopped' | 'degraded';
@@ -63,12 +64,14 @@ export class TwinRuntime {
   /**
    * Start the Twin runtime. This brings the Twin to life.
    */
-  async start(): Promise<void> {
+  async start(userId?: string): Promise<void> {
     if (this.status === 'running') return;
 
     this.uptimeStart = Date.now();
     // تهيئة الاشتراك للمستخدم
-    subscriptionService.initialize(userId).catch(console.warn);
+    if (userId) {
+      subscriptionService.initialize(userId).catch(console.warn);
+    }
     this.status = 'running';
 
     // Transition from Dormant to Aware
