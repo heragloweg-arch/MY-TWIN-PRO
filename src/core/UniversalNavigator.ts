@@ -1,6 +1,7 @@
 import { EventBus } from './EventBus';
 import { StateBus } from './StateBus';
 import { audioEngine } from './AudioEngine';
+import { audioMixer } from './AudioMixer';
 
 /**
  * وجهات الملاحة المدعومة
@@ -66,7 +67,7 @@ export class UniversalNavigator {
     // 2. صوت الانتقال
     if (config.audioTrack) {
       audioEngine.play(config.audioTrack);
-    audioMixer.setContext(config.energyShift);
+      audioMixer.setContext(config.energyShift);
     }
 
     // 3. التحول البصري

@@ -1,6 +1,7 @@
 import { EventBus } from '../core/EventBus';
 import { StateBus } from '../core/StateBus';
 import { audioEngine } from '../core/AudioEngine';
+import { livingPresenceCoordinator } from '../core/LivingPresenceCoordinator';
 
 export type DailyState =
   | 'morning' | 'idle' | 'conversation' | 'thinking' | 'remembering'

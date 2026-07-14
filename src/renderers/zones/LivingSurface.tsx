@@ -61,9 +61,9 @@ export const LivingSurface = ({
   const pulseAnim = usePulse(0.96, 1.04, theme.motion.pulseDuration);
   const breathAnim = useBreath(0.5, 0.9, theme.motion.breathDuration);
 
-  // glow يعتمد على الحالة
   const glowSpeed = status === 'thinking' ? 1500 : status === 'speaking' ? 600 : status === 'remembering' ? 3000 : 2500;
-  const glowOpacity = useBreath(0.04, 0.12 + (importance / 100) * 0.1, glowSpeed);
+  const glowOpacityAnim = useBreath(0.04, 0.12 + (importance / 100) * 0.1, glowSpeed);
+  const emotionOpacityAnim = useBreath(0.02, 0.06, 3500);
 
   const variantStyles = useMemo(() => {
     const map: Record<Variant, any> = {
@@ -118,7 +118,7 @@ export const LivingSurface = ({
       {variantStyles.glow !== 'transparent' && (
         <Animated.View style={[st.glow, {
           backgroundColor: variantStyles.glow,
-          opacity: glowOpacity,
+          opacity: glowOpacityAnim,
           transform: [{ scale: 1.5 }],
           borderRadius: theme.radius.lg + 20,
         }]} />
@@ -128,7 +128,7 @@ export const LivingSurface = ({
       {emotionColor !== 'transparent' && (
         <Animated.View style={[st.emotionOverlay, {
           backgroundColor: emotionColor,
-          opacity: useBreath(0.02, 0.06, 3500).current,
+          opacity: emotionOpacityAnim,
           borderRadius: theme.radius.lg,
         }]} />
       )}

@@ -97,7 +97,7 @@ export default function SessionRestore() {
       </View>
       <View style={styles.breathContainer}>
         <BreathingGlow
-          visible={true}
+          
           color={phase === 'reconnecting' ? '#A78BFA' : '#7C3AED'}
           speed={phase === 'reconnecting' ? 1.2 : 0.8}
         />
