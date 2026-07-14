@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import Animated, { withSequence, withTiming,  useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing } from 'react-native-reanimated';
 import { usePresence } from '../../hooks/usePresence';
 import { useBreathAnimation } from '../../hooks/useBreathAnimation';
 import { EventBus } from '../../core/EventBus';

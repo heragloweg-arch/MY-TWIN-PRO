@@ -1,21 +1,53 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet } from 'react-native';
-import Animated, { useAnimatedStyle, interpolate } from 'react-native-reanimated';
-import { RADIUS } from '../../../src/design/tokens/spacing';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing } from 'react-native-reanimated';
 
-export default function BreathingGlow({ breathPhase, intensity }: { breathPhase: number; intensity: number }) {
-  const glowStyle = useAnimatedStyle(() => {
-    const scale = interpolate(breathPhase, [0, 0.5, 1], [0.9, 1.05, 0.9]);
-    const opacity = interpolate(breathPhase, [0, 0.5, 1], [0.3, intensity, 0.3]);
-    return { transform: [{ scale }], opacity };
-  });
+interface BreathingGlowProps {
+  color?: string;
+  speed?: number;
+}
 
-  return <Animated.View style={[styles.glow, glowStyle]} />;
+export default function BreathingGlow({ color = '#A855F7', speed = 1.0 }: BreathingGlowProps) {
+  const opacity = useSharedValue(0.1);
+  const scale = useSharedValue(0.8);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withTiming(0.2, { duration: 2000 / speed, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+    scale.value = withRepeat(
+      withTiming(1.1, { duration: 2000 / speed, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+  }, [speed]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        styles.glow,
+        {
+          backgroundColor: color,
+          width: 120,
+          height: 120,
+          borderRadius: 60,
+        },
+        animatedStyle,
+      ]}
+      pointerEvents="none"
+    />
+  );
 }
 
 const styles = StyleSheet.create({
   glow: {
-    width: 240, height: 240, borderRadius: RADIUS.avatar,
-    backgroundColor: '#6B5B8A', position: 'absolute', alignSelf: 'center',
+    position: 'absolute',
   },
 });
