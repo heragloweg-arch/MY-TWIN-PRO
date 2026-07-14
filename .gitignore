@@ -18,3 +18,4 @@ ios/
 __pycache__/
 *.pyc
 backend/.env
+__tests__/
