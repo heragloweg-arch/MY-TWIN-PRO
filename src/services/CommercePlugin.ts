@@ -28,13 +28,16 @@ export interface PurchaseResult {
   needsRestore?: boolean;
 }
 
+const API_URL = typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL
+  ? process.env.EXPO_PUBLIC_API_URL
+  : 'https://my-twin-pro-production-b744.up.railway.app';
+
 export class CommercePlugin {
   private initialized = false;
 
   async initialize(): Promise<boolean> {
     if (this.initialized) return true;
     try {
-      // في بيئة حقيقية: تهيئة Google Play Billing
       if (typeof initializeIAP === 'function') {
         const ok = await initializeIAP();
         if (ok) {
@@ -42,7 +45,6 @@ export class CommercePlugin {
           return true;
         }
       }
-      // fallback: التحقق من صحة الاتصال بالخادم
       await apiGet('/api/billing/health');
       this.initialized = true;
       return true;
@@ -55,33 +57,46 @@ export class CommercePlugin {
   async getProducts(): Promise<PlanInfo[]> {
     try {
       const res = await apiGet('/api/billing/plans');
-      return res?.plans || [];
+      const plans = (res?.plans || []).map((p: any) => ({
+        tier: (p.tier as PlanTier),
+        name: p.name,
+        price: p.price,
+        messages: p.messages,
+        features: p.features,
+        isActive: p.isActive,
+        expiresAt: p.expiresAt,
+      }));
+      return plans;
     } catch (e) {
       return [];
     }
   }
 
   async purchase(planId: PlanTier, userId: string): Promise<PurchaseResult> {
-    const productId = PRODUCT_IDS[planId];
+    const productId = PRODUCT_IDS[planId as keyof typeof PRODUCT_IDS];
     if (!productId) {
       return { success: false, message: `معرف منتج غير صالح: ${planId}` };
     }
 
     try {
-      // استخدام iapService للشراء الحقيقي عبر Google Play
       if (typeof iapPurchase === 'function') {
-        const result = await iapPurchase(planId, userId);
-        return result;
+        const result: any = await iapPurchase(planId, userId);
+        return {
+          success: result.success || false,
+          tier: (result.tier as PlanTier) || planId,
+          message: result.message || '',
+          cancelled: result.cancelled || false,
+          needsRestore: result.needsRestore || false,
+        } as PurchaseResult;
       }
 
-      // fallback: شراء عبر الويب
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://my-twin-pro-production-b744.up.railway.app'}/api/billing/purchase`, {
+      const res = await fetch(`${API_URL}/api/billing/purchase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId, plan_id: planId, platform: 'web' }),
       });
       const data = await res.json();
-      return { success: data?.success || false, tier: planId, message: data?.message };
+      return { success: data?.success || false, tier: planId, message: data?.message } as PurchaseResult;
     } catch (e: any) {
       return { success: false, message: e.message || 'فشل الشراء' };
     }
@@ -90,7 +105,14 @@ export class CommercePlugin {
   async restorePurchases(userId: string): Promise<PurchaseResult> {
     try {
       if (typeof iapRestore === 'function') {
-        return await iapRestore(userId);
+        const result: any = await iapRestore(userId);
+        return {
+          success: result.success || false,
+          tier: (result.tier as PlanTier),
+          message: result.message || '',
+          cancelled: result.cancelled || false,
+          needsRestore: result.needsRestore || false,
+        } as PurchaseResult;
       }
       return { success: false, message: 'الاستعادة غير متاحة على هذا الجهاز' };
     } catch (e: any) {
@@ -100,7 +122,7 @@ export class CommercePlugin {
 
   async verifyPurchase(purchaseToken: string, userId: string): Promise<boolean> {
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://my-twin-pro-production-b744.up.railway.app'}/api/billing/verify`, {
+      const res = await fetch(`${API_URL}/api/billing/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ purchase_token: purchaseToken, user_id: userId }),
@@ -149,7 +171,7 @@ export class CommercePlugin {
 
   async cancel(userId: string): Promise<boolean> {
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://my-twin-pro-production-b744.up.railway.app'}/api/billing/cancel`, {
+      const res = await fetch(`${API_URL}/api/billing/cancel`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId }),

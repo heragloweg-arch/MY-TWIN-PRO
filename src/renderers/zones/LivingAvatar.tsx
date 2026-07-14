@@ -53,11 +53,11 @@ export default function LivingAvatar({
   }, [isThinking]);
 
   const avatarStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${headTilt.value}deg` }],
+    transform: [{ rotate: `${headTilt.value}deg` } as const],
   }));
 
   const blinkStyle = useAnimatedStyle(() => ({
-    transform: [{ scaleY: interpolate(blinkProgress.value, [0, 0.5, 1], [1, 0.1, 1]) }],
+    transform: [{ scaleY: interpolate(blinkProgress.value, [0, 0.5, 1], [1, 0.1, 1]) } as const],
   }));
 
   const eyeGazeStyle = useAnimatedStyle(() => {
@@ -70,7 +70,7 @@ export default function LivingAvatar({
     else { translateX = 0; translateY = 0; }
 
     return {
-      transform: [{ translateX }, { translateY }],
+      transform: [{ translateX }, { translateY }] as const,
     };
   });
 

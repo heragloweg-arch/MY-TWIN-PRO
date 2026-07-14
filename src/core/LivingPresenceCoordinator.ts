@@ -106,6 +106,7 @@ export class LivingPresenceCoordinator {
   private lastCuriosityTrigger: number = Date.now();
   private curiosityInterval: ReturnType<typeof setInterval> | null = null;
 
+stop(): void {    if (this.curiosityInterval) clearInterval(this.curiosityInterval);    if (this.breathInterval) clearInterval(this.breathInterval);    if (this.idleTimer) clearInterval(this.idleTimer);  }
   startCuriosity(): void {
     this.curiosityInterval = setInterval(() => {
       this.generateCuriosity();

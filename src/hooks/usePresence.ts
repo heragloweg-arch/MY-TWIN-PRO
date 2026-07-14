@@ -6,10 +6,10 @@
  */
 
 import { useEffect, useState } from 'react';
-import { StateBus, PresenceLevel, InterfaceState } from '../core/StateBus';
+import { StateBus, InterfaceState } from '../core/StateBus';
 
 interface PresenceInfo {
-  presenceLevel: PresenceLevel;
+  presenceLevel: number;
   interfaceState: InterfaceState;
   isPresent: boolean;
   isActive: boolean;
@@ -37,7 +37,7 @@ export function usePresence(): PresenceInfo {
   return info;
 }
 
-function buildInfo(level: PresenceLevel, state: InterfaceState): PresenceInfo {
+function buildInfo(level: number, state: InterfaceState): PresenceInfo {
   return {
     presenceLevel: level,
     interfaceState: state,

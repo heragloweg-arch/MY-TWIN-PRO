@@ -36,7 +36,7 @@ const Blob = ({ index, speed, colors, baseSize, pulseType }: {
     const translateX = pulseType === 'scattered' ? interpolate(pulse.value, [0, 1], [-20 * index, 20 * index], Extrapolation.CLAMP) : 0;
     const translateY = pulseType === 'scattered' ? interpolate(pulse.value, [0, 1], [-10, 10], Extrapolation.CLAMP) : 0;
     return {
-      transform: [{ scale }, { translateX }, { translateY }, { rotate: `${rotate.value}deg` }],
+      transform: [{ scale }, { translateX }, { translateY }, { rotate: `${rotate.value}deg` }] as const,
       opacity,
     };
   });

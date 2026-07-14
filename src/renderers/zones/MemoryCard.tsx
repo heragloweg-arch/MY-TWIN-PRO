@@ -39,7 +39,7 @@ export default function MemoryCard({ id, content, type, timestamp, emotion, onDi
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+    transform: [{ translateY: translateY.value }, { scale: scale.value }] as const,
   }));
 
   const handleDismiss = () => {

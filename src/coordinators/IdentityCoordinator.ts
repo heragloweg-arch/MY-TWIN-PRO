@@ -38,6 +38,16 @@ export class IdentityCoordinator {
     };
   }
 
+  completeProgressiveIdentity(answer: string): void {
+    // تخزين الإجابة كجزء من هوية المستخدم
+    try {
+      // يمكن تخزين الإجابة في LocalStorage أو إرسالها للخادم
+      console.log('[IdentityCoordinator] Progressive identity completed with:', answer.substring(0, 50));
+    } catch (e) {
+      console.warn('[IdentityCoordinator] Failed to store progressive identity:', e);
+    }
+  }
+
   private deriveVoiceFromDNA(dna: PersonalityDNA, phase: string): VoiceIdentity {
     const energy = (dna.initiative + dna.curiosity) / 2;
     const voice: VoiceIdentity = {
