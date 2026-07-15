@@ -52,7 +52,7 @@
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "minSdkVersion": 24,
-            "kotlinVersion": "1.9.24"
+            "enableProguardInReleaseBuilds": true
           },
           "ios": {
             "newArchEnabled": false,
@@ -75,7 +75,7 @@
       "eas": {
         "projectId": "6cb78668-322b-476f-ab25-4136d85f8d68"
       },
-      "API_URL": "https://my-twin-pro-production-b744.up.railway.app",
+      "API_URL": "my-twin-pro-production.up.railway.app",
       "ENVIRONMENT": "production"
     },
     "updates": {
