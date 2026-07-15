@@ -40,7 +40,7 @@ import DailyTimeline from './DailyTimeline';
 import SessionSurface from './SessionSurface';
 import LivingTimeline from './LivingTimeline';
 import MemoryForest from './MemoryForest';
-import SoulPulse from '../renderers/zones/SoulPulse';
+import LivingLightEntity from '../renderers/zones/LivingLightEntity';
 import { useTwinStore } from '../../store/useTwinStore';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
 
@@ -129,7 +129,7 @@ export default function LivingWorld() {
       <TouchableWithoutFeedback onPress={handleFirstInteraction}>
         <View style={styles.container}>
           <AmbientField />
-          <SoulPulseRing />
+          
           <SoulPulse />
           <SoulObservatory />
           <ConnectionField visible={bond.bondLevel >= 2} />

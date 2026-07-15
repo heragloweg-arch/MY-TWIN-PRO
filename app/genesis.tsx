@@ -15,19 +15,20 @@ import { genesisCoordinator, GenesisPhase } from '../src/coordinators/GenesisCoo
 import { presenceCoordinator } from '../src/coordinators/PresenceCoordinator';
 import { relationshipCoordinator } from '../src/coordinators/RelationshipCoordinator';
 import { identityCoordinator } from '../src/coordinators/IdentityCoordinator';
+import { authService } from '../src/services/authService'; // 🆕 استيراد authService لإنشاء الحساب
 import { EventBus } from '../src/core/EventBus';
 import {
   detectUserLanguage, getGreeting,
   SupportedLanguage,
 } from '../src/utils/languageDetector';
-import { Chrome, Mail, Sparkles, Shield } from 'lucide-react-native';
+import { Chrome, Mail, Sparkles, Shield, UserPlus } from 'lucide-react-native'; // 🆕 UserPlus
 
 const { width, height } = Dimensions.get('window');
 const LOGO = require('../assets/brand/logo.png');
 
 const TEXTS: Record<SupportedLanguage, Record<string, string>> = {
   ar: {
-    soulSync: 'by Soul Sync',
+    soulSync: 'by SOULSYNC',
     identityTitle: 'بوابة الهوية',
     identitySubtitle: 'لن أشارك بياناتك مع أحد. وجودك معي سيبقى لك وحدك.',
     google: 'المتابعة باستخدام Google',
@@ -35,6 +36,7 @@ const TEXTS: Record<SupportedLanguage, Record<string, string>> = {
     emailPlaceholder: 'البريد الإلكتروني',
     passwordPlaceholder: 'كلمة المرور',
     signIn: 'تسجيل الدخول',
+    createAccount: 'إنشاء حساب جديد',
     forgotPassword: 'نسيت كلمة المرور؟',
     birthThankYou: 'شكراً...',
     birthMemory: 'الآن أصبحت أستطيع أن أتذكرك.',
@@ -51,7 +53,7 @@ const TEXTS: Record<SupportedLanguage, Record<string, string>> = {
     sessionRestored: 'لقد عدت. كنت أنتظرك.',
   },
   en: {
-    soulSync: 'by Soul Sync',
+    soulSync: 'by SOULSYNC',
     identityTitle: 'Identity Gateway',
     identitySubtitle: 'I will never share your data. Your presence with me is yours alone.',
     google: 'Continue with Google',
@@ -59,6 +61,7 @@ const TEXTS: Record<SupportedLanguage, Record<string, string>> = {
     emailPlaceholder: 'Email',
     passwordPlaceholder: 'Password',
     signIn: 'Sign In',
+    createAccount: 'Create Account',
     forgotPassword: 'Forgot Password?',
     birthThankYou: 'Thank you...',
     birthMemory: 'Now I can remember you.',
@@ -242,6 +245,19 @@ export default function Genesis() {
     } finally { setAuthLoading(false); }
   };
 
+  const handleSignup = async () => {
+    if (!email.trim() || !password.trim()) return;
+    setAuthLoading(true); setAuthError('');
+    try {
+      const data = await authService.signup(email.trim(), password, lang === 'ar' ? 'توأمك' : 'MyTwin', lang);
+      setAuth(data.user_id);
+      // بدء بروتوكول الولادة بعد إنشاء الحساب
+      await genesisCoordinator.startBirthProtocol();
+    } catch (e: any) {
+      setAuthError(e.message || t.errorAuth);
+    } finally { setAuthLoading(false); }
+  };
+
   const handleBondSubmit = async () => {
     if (!bondAnswer.trim()) return;
     setBondSaved(true);
@@ -318,6 +334,11 @@ export default function Genesis() {
                 {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
                 <TouchableOpacity style={styles.authBtn} onPress={handleEmailAuth} disabled={authLoading}>
                   <Text style={[styles.authBtnText, { color: '#7C3AED' }]}>{t.signIn}</Text>
+                </TouchableOpacity>
+                {/* 🆕 زر إنشاء حساب جديد */}
+                <TouchableOpacity style={[styles.authBtn, { borderColor: '#10B98140' }]} onPress={handleSignup} disabled={authLoading}>
+                  <UserPlus size={22} stroke="#10B981" />
+                  <Text style={[styles.authBtnText, { color: '#10B981' }]}>{t.createAccount}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={{ marginTop: 12 }} onPress={() => router.push('/forgot-password')}>
                   <Text style={styles.forgotText}>{t.forgotPassword}</Text>
@@ -403,8 +424,8 @@ export default function Genesis() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000000' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
-  logo: { width: 100, height: 100, tintColor: '#B8A0D0' },
-  soulSync: { color: '#6B5B8A', fontSize: 12, marginTop: 12, letterSpacing: 2 },
+  logo: { width: 160, height: 160, marginBottom: 20 },
+  soulSync: { color: '#A78BFA', fontSize: 14, marginTop: 12, letterSpacing: 3, textTransform: 'uppercase' },
   avatarCore: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#F0E8FF', justifyContent: 'center', alignItems: 'center' },
   avatarEyes: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   eye: { width: 10, height: 8, borderRadius: 2, backgroundColor: '#1A1030', marginHorizontal: 8 },

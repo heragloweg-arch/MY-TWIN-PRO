@@ -4,75 +4,90 @@ import { router } from 'expo-router';
 import { bootstrapCoordinator, BootstrapPhase } from '../src/core/BootstrapCoordinator';
 import SoulPulse from '../src/renderers/zones/SoulPulse';
 import BreathingGlow from '../src/renderers/zones/BreathingGlow';
+import AmbientField from '../src/world/AmbientField';
 
 export default function Index() {
   const [phase, setPhase] = useState<BootstrapPhase>('void');
+  const [welcomeMessage, setWelcomeMessage] = useState('');
+  const [bootSteps, setBootSteps] = useState<string[]>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  
   const opacity = useRef(new Animated.Value(0)).current;
   const messageOpacity = useRef(new Animated.Value(0)).current;
+  const stepOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // ظهور تدريجي للطبقات
-    Animated.timing(opacity, {
-      toValue: 1,
-      duration: 1500,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+    const startBootstrap = async () => {
+      // 1. ظهور AmbientField
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 1500,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
 
-    // بدء رحلة الإقلاع
-    bootstrap();
-  }, []);
+      // 2. بدء عملية الإقلاع
+      const result = await bootstrapCoordinator.bootstrap();
+      setPhase(result.phase);
+      setWelcomeMessage(result.welcomeMessage);
+      setBootSteps(result.bootSteps);
 
-  const bootstrap = async () => {
-    const result = await bootstrapCoordinator.bootstrap();
-    setPhase(result.phase);
+      // 3. عرض رسالة الترحيب
+      Animated.timing(messageOpacity, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
 
-    // ظهور رسالة "وجدتك." أو "لنبدأ."
-    Animated.timing(messageOpacity, {
-      toValue: 1,
-      duration: 1200,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+      // 4. عرض خطوات الإقلاع بالتدريج
+      for (let i = 0; i < result.bootSteps.length; i++) {
+        await delay(800);
+        setCurrentStep(i + 1);
+        Animated.timing(stepOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }
 
-    // الانتقال إلى الوجهة المناسبة بعد 3 ثوانٍ
-    setTimeout(() => {
+      // 5. الانتقال النهائي
+      await delay(1000);
       if (result.isReturning) {
-        // ✅ تم تصحيح المسار ليشير مباشرة إلى شاشة LivingWorld الحقيقية
         router.replace('/living-world');
       } else {
         router.replace('/genesis');
       }
-    }, 3000);
-  };
+    };
 
-  const getMessage = () => {
-    if (phase === 'searching') return 'أبحث عن حضورك...';
-    if (phase === 'found') return 'وجدتك.';
-    if (phase === 'new_journey') return 'لنبدأ من البداية.';
-    return '';
-  };
+    startBootstrap();
+  }, []);
 
   return (
     <View style={styles.container}>
-      {/* طبقات الحضور الحية */}
-      <Animated.View style={[styles.pulseContainer, { opacity }]}>
-        <SoulPulse />
+      <Animated.View style={[styles.ambientContainer, { opacity }]}>
+        <AmbientField />
       </Animated.View>
       
-      <Animated.View style={[styles.breathContainer, { opacity }]}>
+      <View style={styles.pulseContainer}>
+        <SoulPulse />
+      </View>
+      
+      <View style={styles.breathContainer}>
         <BreathingGlow
           color={phase === 'found' ? '#A78BFA' : '#7C3AED'}
           speed={phase === 'searching' ? 1.4 : 0.8}
         />
-      </Animated.View>
+      </View>
 
-      {/* الكلمة الحية */}
-      {phase !== 'void' && (
-        <Animated.View style={[styles.messageContainer, { opacity: messageOpacity }]}>
-          <Text style={styles.message}>{getMessage()}</Text>
-        </Animated.View>
-      )}
+      <Animated.View style={[styles.messageContainer, { opacity: messageOpacity }]}>
+        <Text style={styles.message}>{welcomeMessage}</Text>
+        {bootSteps.slice(0, currentStep).map((step, index) => (
+          <Animated.Text key={index} style={[styles.stepText, { opacity: stepOpacity }]}>
+            {step}
+          </Animated.Text>
+        ))}
+      </Animated.View>
     </View>
   );
 }
@@ -83,6 +98,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#0A0014',
+  },
+  ambientContainer: {
+    ...StyleSheet.absoluteFillObject,
   },
   pulseContainer: {
     position: 'absolute',
@@ -100,9 +118,18 @@ const styles = StyleSheet.create({
   },
   message: {
     color: '#E8E0F0',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '300',
     textAlign: 'center',
-    letterSpacing: 1.5,
+    marginBottom: 20,
+  },
+  stepText: {
+    color: '#A78BFA',
+    fontSize: 14,
+    marginTop: 8,
   },
 });
+
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}

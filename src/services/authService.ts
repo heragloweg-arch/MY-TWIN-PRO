@@ -27,33 +27,48 @@ export interface SessionRestoreResult {
 
 export class AuthService {
   async login(email: string, password: string): Promise<AuthResult> {
-    const data = await apiPost('/api/auth/login', { email: email.trim(), password });
-    if (data?.token && data?.user_id) {
-      await securityService.storeToken(data.token);
-      await AsyncStorage.setItem(KEYS.USER, data.user_id);
-      return { token: data.token, user_id: data.user_id, onboarded: data.onboarded || false, isNewUser: false };
+    try {
+      const data = await apiPost('/api/auth/login', { email: email.trim(), password });
+      if (data?.token && data?.user_id) {
+        await securityService.storeToken(data.token);
+        await AsyncStorage.setItem(KEYS.USER, data.user_id);
+        return { token: data.token, user_id: data.user_id, onboarded: data.onboarded || false, isNewUser: false };
+      }
+      throw new Error(data?.message || 'فشل تسجيل الدخول');
+    } catch (e: any) {
+      throw new Error(e.message || 'فشل تسجيل الدخول. تحقق من بريدك الإلكتروني وكلمة المرور.');
     }
-    throw new Error('فشل تسجيل الدخول');
   }
 
   async signup(email: string, password: string, twinName: string = 'توأمك', lang: string = 'ar'): Promise<AuthResult> {
-    const data = await apiPost('/api/auth/signup', { email: email.trim(), password, twin_name: twinName, lang });
-    if (data?.token && data?.user_id) {
-      await securityService.storeToken(data.token);
-      await AsyncStorage.setItem(KEYS.USER, data.user_id);
-      return { token: data.token, user_id: data.user_id, onboarded: false, twin_name: twinName, isNewUser: true };
+    try {
+      const data = await apiPost('/api/auth/signup', { email: email.trim(), password, twin_name: twinName, lang });
+      if (data?.token && data?.user_id) {
+        await securityService.storeToken(data.token);
+        await AsyncStorage.setItem(KEYS.USER, data.user_id);
+        return { token: data.token, user_id: data.user_id, onboarded: false, twin_name: twinName, isNewUser: true };
+      }
+      throw new Error(data?.message || 'فشل إنشاء الحساب');
+    } catch (e: any) {
+      if (e.message?.includes('already registered')) {
+        throw new Error('هذا البريد مسجل بالفعل. حاول تسجيل الدخول.');
+      }
+      throw new Error(e.message || 'فشل إنشاء الحساب. حاول مرة أخرى.');
     }
-    throw new Error('فشل إنشاء الحساب');
   }
 
   async loginWithGoogle(lang: string = 'ar'): Promise<AuthResult> {
-    const data = await googleLogin(lang);
-    if (data?.token && data?.user_id) {
-      await securityService.storeToken(data.token);
-      await AsyncStorage.setItem(KEYS.USER, data.user_id);
-      return { token: data.token, user_id: data.user_id, onboarded: data.onboarded || false, isNewUser: !data.onboarded };
+    try {
+      const data = await googleLogin(lang);
+      if (data?.token && data?.user_id) {
+        await securityService.storeToken(data.token);
+        await AsyncStorage.setItem(KEYS.USER, data.user_id);
+        return { token: data.token, user_id: data.user_id, onboarded: data.onboarded || false, isNewUser: !data.onboarded };
+      }
+      throw new Error('فشل تسجيل الدخول بـ Google');
+    } catch (e: any) {
+      throw new Error(e.message || 'فشل تسجيل الدخول بـ Google. حاول مرة أخرى.');
     }
-    throw new Error('فشل تسجيل الدخول بـ Google');
   }
 
   async forgotPassword(email: string): Promise<void> {

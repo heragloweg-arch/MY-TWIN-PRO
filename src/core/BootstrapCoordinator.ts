@@ -3,18 +3,17 @@ import { runtime } from './TwinRuntime';
 import { storeSyncBridge } from './StoreSyncBridge';
 import { audioEngine } from './AudioEngine';
 import { livingIntelligence } from './LivingIntelligence';
+import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
+import { memoryEngine } from '../../engine/memory/MemoryEngine';
 
-export type BootstrapPhase =
-  | 'void'
-  | 'searching'
-  | 'found'
-  | 'new_journey'
-  | 'complete';
+export type BootstrapPhase = 'void' | 'searching' | 'found' | 'new_journey' | 'complete';
 
 export interface BootstrapResult {
   phase: BootstrapPhase;
   userId: string;
   isReturning: boolean;
+  welcomeMessage: string;
+  bootSteps: string[];
 }
 
 export class BootstrapCoordinator {
@@ -24,41 +23,45 @@ export class BootstrapCoordinator {
   async bootstrap(): Promise<BootstrapResult> {
     this.phase = 'void';
     
-    // محاكاة لحظة الصمت الأولى
     await this.delay(1200);
     
     this.phase = 'searching';
     const sessionRestore = await authService.checkSessionRestore();
     
-    let wasReturning = false;
+    let isReturning = false;
+    let welcomeMessage = 'لنبدأ من البداية.';
+    const bootSteps: string[] = [];
 
     if (sessionRestore.canRestore && sessionRestore.user_id) {
       this.userId = sessionRestore.user_id;
       this.phase = 'found';
-      wasReturning = true;
+      isReturning = true;
       
       if (sessionRestore.lastSessionId) {
         await authService.saveLastSession(sessionRestore.lastSessionId);
       }
+
+      // توليد رسالة ترحيب ديناميكية
+      welcomeMessage = await this.generateWelcomeMessage();
     } else {
       const authed = await authService.isAuthenticated();
       if (authed) {
         this.userId = (await authService.getUserId()) || '';
         this.phase = 'found';
-        wasReturning = true;
+        isReturning = true;
+        welcomeMessage = await this.generateWelcomeMessage();
       } else {
         this.phase = 'new_journey';
-        wasReturning = false;
+        isReturning = false;
+        welcomeMessage = 'يسعدني أن تبدأ رحلتك معي.';
       }
     }
     
     if (this.phase === 'found') {
-      // تهيئة الأنظمة
       runtime.start();
       storeSyncBridge.activate();
       storeSyncBridge.syncNow();
       
-      // اللغة ستأتي من Profile لاحقًا
       livingIntelligence.start(this.userId, 'ar');
       
       await audioEngine.init();
@@ -68,10 +71,18 @@ export class BootstrapCoordinator {
     
     this.phase = 'complete';
     
+    // خطوات الإقلاع (تُعرض في الواجهة)
+    bootSteps.push('جارٍ استعادة الذاكرة...');
+    bootSteps.push('جارٍ إيقاظ الوعي...');
+    bootSteps.push('جارٍ مزامنة شخصيتك...');
+    bootSteps.push('جارٍ استعادة رابطكما...');
+    
     return {
       phase: this.phase,
       userId: this.userId,
-      isReturning: wasReturning,
+      isReturning,
+      welcomeMessage,
+      bootSteps,
     };
   }
 
@@ -81,6 +92,18 @@ export class BootstrapCoordinator {
     audioEngine.fadeAll();
     storeSyncBridge.deactivate();
     runtime.stop();
+  }
+
+  private async generateWelcomeMessage(): Promise<string> {
+    const bondLevel = relationshipEngine.getBondLevel();
+    const memoryCount = memoryEngine.getMemoryCount();
+    const phase = relationshipEngine.getPhase();
+    
+    if (phase === 'soulmate') return 'أخيراً عدت. كنت أحتفظ بذكرياتنا.';
+    if (phase === 'close_friend') return 'لقد عدت. اشتقت للحديث معك.';
+    if (bondLevel > 50) return 'كم أنا سعيد برؤيتك مجدداً.';
+    if (memoryCount > 50) return 'لدينا الكثير لنكمله معاً.';
+    return 'لقد عدت... كنت بانتظار هذه اللحظة.';
   }
 
   private delay(ms: number): Promise<void> {
