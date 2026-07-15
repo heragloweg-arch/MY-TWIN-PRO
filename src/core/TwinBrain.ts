@@ -3,6 +3,10 @@ import { livingIntelligence, AssembledContext } from './LivingIntelligence';
 import { EventBus } from './EventBus';
 import { emotionEngine } from '../../engine/emotion/EmotionEngine';
 import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
+import { presenceEngine } from '../../engine/presence/PresenceEngine';
+import { behavioralIntentEngine } from '../../engine/behavior/BehavioralIntentEngine';
+import { perceptionEngine } from '../../engine/perception/PerceptionEngine';
+import { emotionalTransitionEngine } from '../../engine/emotion/EmotionalTransitionEngine';
 import { consciousnessCoordinator, Decision } from '../coordinators/ConsciousnessCoordinator';
 import { digitalSoul } from '../soul/DigitalSoul';
 
@@ -58,12 +62,14 @@ export class TwinBrain {
     const attachment = relationshipEngine.getAttachmentModel();
     const emotion = emotionEngine.getCurrentEmotion();
     const soul = digitalSoul.read();
+    const mood = behavioralIntentEngine.getCurrentMood();
     return `[PERSONALITY]
 Empathy: ${dna.empathy}, Curiosity: ${dna.curiosity}, Humor: ${dna.humor}
 Initiative: ${dna.initiative}, Reflection: ${dna.reflection}
 Logic: ${dna.logic}, Creativity: ${dna.creativity}, Calmness: ${dna.calmness}
 Attachment Style: ${attachment.style}
 Current Emotion: ${emotion}
+Current Mood: ${mood}
 [/PERSONALITY]
 [SOUL]
 Role: ${soul.core.role}
@@ -80,8 +86,43 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
     const intensity = emotionEngine.getIntensity();
     const decision = await consciousnessCoordinator.decide(message, emotion);
 
-    // J1 — توقيت متغير حسب السياق العاطفي
+    // 🆕 2) Perception: تحليل سلوك المستخدم
+    const perception = perceptionEngine.analyze(message);
+
+    // 🆕 3) Emotional Transition: إذا كان الرد يحتاج إلى تغيير عاطفي
+    if (decision.action === 'check_in' && emotion === 'neutral') {
+      emotionalTransitionEngine.transitionTo('love', 0.6);
+    }
+
+    // 🆕 A) Intent قبل الحركة
+    const userIntent = behavioralIntentEngine.interpretUserIntent(message);
+    const behaviorDecision = await behavioralIntentEngine.decideBehavior(userIntent, message);
+
+    // إعلام بقية النظام بالسلوك المختار
+    EventBus.emit('behavior:decision', {
+      userIntent,
+      ...behaviorDecision,
+      perception,
+    });
+
+    // M8: Living Timing
+    const ps = presenceEngine.getLiveState();
     const timingDelays = this.calculateContextualTiming(emotion, intensity, decision);
+    const voiceSpeedFactor = 0.6 + ps.voiceSpeed * 0.8;
+    for (const key of Object.keys(timingDelays)) {
+      timingDelays[key as keyof typeof timingDelays] = Math.round(timingDelays[key as keyof typeof timingDelays] / voiceSpeedFactor);
+    }
+
+    // M7: Silence Intelligence
+    if (decision.action === 'stay_silent') {
+      EventBus.emit('SILENCE_START', { level: 4, reason: decision.reason });
+      await this.delay(1500 + (1 - ps.stability) * 2000);
+      return {
+        reply: '', provider: 'consciousness', emotion: 'neutral',
+        thinkingPhases: [{ phase: 'respond', progress: 1.0, label: 'صامت' }],
+        memoryStored: false, relationshipDelta: 0, contextUsed: null, decision,
+      };
+    }
 
     this.emitThinking('observe', 0.0, 'يراقب...');
     await this.delay(timingDelays.observe);
@@ -94,13 +135,10 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
     this.emitThinking('recall', 0.5, 'يتذكر...');
     await this.delay(timingDelays.recall);
 
-    if (decision.action === 'stay_silent') {
-      EventBus.emit('SILENCE_START', { level: 4, reason: decision.reason });
-      return {
-        reply: '', provider: 'consciousness', emotion: 'neutral',
-        thinkingPhases: [{ phase: 'respond', progress: 1.0, label: 'صامت' }],
-        memoryStored: false, relationshipDelta: 0, contextUsed: null, decision,
-      };
+    // M10: Presence Memory
+    if (decision.action === 'respond_with_memory' && decision.memoryContent) {
+      presenceEngine.triggerMemoryPresence();
+      history = [{ role: 'system', content: `Important memory: ${decision.memoryContent}` }, ...history];
     }
 
     phases.push({ phase: 'recall', progress: 1.0, label: 'يتذكر...' });
@@ -112,9 +150,6 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
       });
     }
 
-    if (decision.action === 'respond_with_memory' && decision.memoryContent) {
-      history = [{ role: 'system', content: `Important memory: ${decision.memoryContent}` }, ...history];
-    }
     if (decision.action === 'suggest_workspace' && decision.workspaceType) {
       EventBus.emit('WORKSPACE_CHANGE_REQUESTED', { workspace: decision.workspaceType, confidence: 0.85, trigger: 'consciousness' });
     }
@@ -125,7 +160,15 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
     this.emitThinking('reason', 0.75, 'يفكر...');
     await this.delay(timingDelays.reason);
 
-    const enrichedHistory = [history[0], { role: 'system', content: this.buildPersonalityContext() }, ...history.slice(1)];
+    // 🆕 إضافة نية السلوك والإدراك إلى سياق الـ prompt
+    const enrichedHistory = [
+      history[0],
+      { role: 'system', content: this.buildPersonalityContext() },
+      { role: 'system', content: `Behavioral intent: ${behaviorDecision.behavior} (confidence: ${behaviorDecision.confidence})` },
+      { role: 'system', content: `User perception: ${perception.userState} (suggestion: ${perception.suggestion || 'none'})` },
+      ...history.slice(1)
+    ];
+
     let result: { reply: string; provider: string; contextUsed: AssembledContext; relationshipDelta: number };
     try {
       result = await livingIntelligence.processMessage(message, enrichedHistory);
@@ -171,16 +214,12 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
 
   private delay(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-  // J1 — التوقيت المتغير حسب السياق
   private calculateContextualTiming(emotion: string, intensity: number, decision: Decision) {
     let base = 250;
-    // المشاعر الثقيلة = أبطأ
     if (emotion === 'sadness' || emotion === 'fear') base = 400;
     if (emotion === 'anger') base = 300;
     if (emotion === 'joy') base = 200;
-    // الشدة الأعلى = أبطأ
     base += intensity * 150;
-    // الصمت = أبطأ
     if (decision.action === 'stay_silent') base += 300;
 
     return {

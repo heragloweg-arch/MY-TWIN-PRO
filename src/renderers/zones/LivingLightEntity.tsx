@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Canvas, Circle, Paint, BlurMask, RadialGradient, SweepGradient, Group } from "@shopify/react-native-skia";
-import { useSharedValue, withTiming, withRepeat, withSequence, Easing, useDerivedValue } from "react-native-reanimated";
+import { Canvas, Circle, Paint, BlurMask, RadialGradient, SweepGradient, Group, vec } from "@shopify/react-native-skia";
+import { useSharedValue, withTiming } from "react-native-reanimated";
 import { presenceEngine, PresenceState } from '../../../engine/presence/PresenceEngine';
 import { stateBus } from '../../../src/core/StateBus';
 
@@ -20,10 +20,8 @@ export default function LivingLightEntity({
   isRemembering = false,
   onLongPress,
 }: LivingLightEntityProps) {
-  // قراءة الحالة الأولية من PresenceEngine
   const initialState = presenceEngine.getLiveState();
 
-  // القيم الديناميكية التي ستتغير مع كل تحديث من PresenceEngine
   const breathRate = useSharedValue(initialState.breathRate);
   const breathDepth = useSharedValue(initialState.breathDepth);
   const heartRate = useSharedValue(initialState.heartRate);
@@ -35,8 +33,10 @@ export default function LivingLightEntity({
   const warmth = useSharedValue(initialState.warmth);
   const movementFluidity = useSharedValue(initialState.movementFluidity);
   const socialDistance = useSharedValue(initialState.socialDistance);
+  
+  const gazeX = useSharedValue(110);
+  const gazeY = useSharedValue(110);
 
-  // الاشتراك في تحديثات PresenceEngine (60 إطار/ثانية)
   useEffect(() => {
     const unsubscribe = stateBus.on('presence:state_updated', (event: string, data: any) => {
       const state: PresenceState = data;
@@ -51,15 +51,18 @@ export default function LivingLightEntity({
       warmth.value = withTiming(state.warmth, { duration: 400 });
       movementFluidity.value = withTiming(state.movementFluidity, { duration: 400 });
       socialDistance.value = withTiming(state.socialDistance, { duration: 500 });
+      
+      if (state.eyeTracking) {
+        gazeX.value = withTiming(110 + (Math.random() - 0.5) * 10 * state.focusLevel, { duration: 500 });
+        gazeY.value = withTiming(110 + (Math.random() - 0.5) * 10 * state.focusLevel, { duration: 500 });
+      } else {
+        gazeX.value = withTiming(110 + (Math.random() - 0.5) * 30, { duration: 2000 });
+        gazeY.value = withTiming(110 + (Math.random() - 0.5) * 30, { duration: 2000 });
+      }
     });
 
-    // بدء حلقة الحضور
-    presenceEngine.startPresenceLoop();
-
-    return () => {
-      unsubscribe();
-      presenceEngine.stopPresenceLoop();
-    };
+    // ✅ حلقة الحضور تبدأ من LivingWorld فقط، وليس من هنا
+    return () => { unsubscribe(); };
   }, []);
 
   const SIZE = 220;
@@ -70,56 +73,25 @@ export default function LivingLightEntity({
     <View style={styles.container}>
       <Canvas style={{ width: SIZE, height: SIZE }}>
         <Group>
-          {/* ═══ الطبقة 1: Volumetric Aura (الهالة الحجمية) ═══ */}
           <Circle cx={CENTER} cy={CENTER} r={BASE_RADIUS + 70} opacity={haloIntensity}>
-            <Paint>
-              <BlurMask blur={50} style="normal" />
-            </Paint>
-            <RadialGradient
-              c={vec(CENTER, CENTER)}
-              r={BASE_RADIUS + 70}
-              colors={[`#A78BFA${Math.round(haloIntensity.value * 255).toString(16)}`, '#A78BFA00']}
-            />
+            <Paint><BlurMask blur={50} style="normal" /></Paint>
+            <RadialGradient c={vec(CENTER, CENTER)} r={BASE_RADIUS + 70} colors={['#A78BFA40', '#A78BFA00']} />
           </Circle>
-
-          {/* ═══ الطبقة 2: Organic Waves (التموجات العضوية) ═══ */}
           <Circle cx={CENTER} cy={CENTER} r={haloRadius} opacity={0.2}>
-            <Paint>
-              <BlurMask blur={25} style="normal" />
-            </Paint>
-            <RadialGradient
-              c={vec(CENTER, CENTER)}
-              r={haloRadius}
-              colors={['#8A2BE260', '#A78BFA00']}
-            />
+            <Paint><BlurMask blur={25} style="normal" /></Paint>
+            <RadialGradient c={vec(CENTER, CENTER)} r={haloRadius} colors={['#8A2BE260', '#A78BFA00']} />
           </Circle>
-
-          {/* ═══ الطبقة 3: Fluid Membrane (الغشاء السائل) ═══ */}
           <Circle cx={CENTER} cy={CENTER} r={BASE_RADIUS + 5} color={`#A78BFA50`}>
-            <Paint style="stroke" strokeWidth={2} />
-            <BlurMask blur={5} style="inner" />
+            <Paint style="stroke" strokeWidth={2} /><BlurMask blur={5} style="inner" />
           </Circle>
-
-          {/* ═══ الطبقة 4: Energy Streams (تيارات الطاقة الداخلية) ═══ */}
           <Circle cx={CENTER} cy={CENTER} r={BASE_RADIUS * 0.8} opacity={energyLevel}>
-            <Paint>
-              <BlurMask blur={12} style="inner" />
-            </Paint>
-            <SweepGradient
-              c={vec(CENTER, CENTER)}
-              colors={['#A78BFA', '#8A2BE2', '#A78BFA', '#A78BFA80']}
-            />
+            <Paint><BlurMask blur={12} style="inner" /></Paint>
+            <SweepGradient c={vec(CENTER, CENTER)} colors={['#A78BFA', '#8A2BE2', '#A78BFA', '#A78BFA80']} />
           </Circle>
-
-          {/* ═══ الطبقة 5: Soul Core (النواة المركزية) ═══ */}
           <Circle cx={CENTER} cy={CENTER} r={BASE_RADIUS * 0.4} color="#A78BFA" opacity={warmth}>
-            <Paint>
-              <BlurMask blur={8} style="solid" />
-            </Paint>
+            <Paint><BlurMask blur={8} style="solid" /></Paint>
           </Circle>
-
-          {/* ═══ الطبقة 6: Consciousness Spark (شرارة الوعي) ═══ */}
-          <Circle cx={CENTER} cy={CENTER} r={3} color="#FFFFFF" opacity={focusLevel} />
+          <Circle cx={gazeX} cy={gazeY} r={3 + focusLevel} color="#FFFFFF" opacity={focusLevel} />
         </Group>
       </Canvas>
     </View>
@@ -127,11 +99,5 @@ export default function LivingLightEntity({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    width: 220,
-    height: 220,
-    alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { width: 220, height: 220, alignSelf: 'center', justifyContent: 'center', alignItems: 'center' },
 });

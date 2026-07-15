@@ -9,9 +9,12 @@ import { awakeningController, AwakeningState } from '../controllers/AwakeningCon
 import { signatureMomentsController } from '../controllers/SignatureMomentsController';
 import { storeSyncBridge } from '../core/StoreSyncBridge';
 import { EventBus } from '../core/EventBus';
+import { stateBus } from '../core/StateBus';
 import { getGreeting } from '../utils/languageDetector';
 import { useRTL } from '../../lib/useRTL';
 import { capabilityOrchestrator } from '../coordinators/CapabilityOrchestrator';
+import { presenceEngine } from '../../engine/presence/PresenceEngine';
+import { perceptionEngine } from '../../engine/perception/PerceptionEngine';
 import BirthSequence from '../renderers/zones/BirthSequence';
 import GreetingWord from '../renderers/zones/GreetingWord';
 import ThinkingIndicator from '../renderers/zones/ThinkingIndicator';
@@ -23,7 +26,6 @@ import AmbientField from './AmbientField';
 import TwinPresenceZone from './TwinPresenceZone';
 import ContextOverlay from './ContextOverlay';
 import WorkspacePortal from './WorkspacePortal';
-import SoulPulseRing from './SoulPulseRing';
 import SoulObservatory from './SoulObservatory/SoulObservatory';
 import WorldTransition from './WorldTransition';
 import StudyCapability from './StudyCapability';
@@ -41,7 +43,9 @@ import SessionSurface from './SessionSurface';
 import LivingTimeline from './LivingTimeline';
 import MemoryForest from './MemoryForest';
 import LivingLightEntity from '../renderers/zones/LivingLightEntity';
+import ConversationSpace from './ConversationSpace';
 import { useTwinStore } from '../../store/useTwinStore';
+import { audioMixer } from '../core/AudioMixer';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
 
 export default function LivingWorld() {
@@ -67,7 +71,24 @@ export default function LivingWorld() {
   const [showInput, setShowInput] = useState(false);
   const [memoryEchoVisible, setMemoryEchoVisible] = useState(false);
   const [echoColor, setEchoColor] = useState('#A855F7');
+  const [isWriting, setIsWriting] = useState(false);
   const greeting = getGreeting();
+
+  // M6: Presence Sound
+  useEffect(() => {
+    const unsubscribe = stateBus.on('presence:state_updated', (event: string, data: any) => {
+      if (data.warmth > 0.8) audioMixer.setContext('celebration');
+      else if (data.focusLevel > 0.8) audioMixer.setContext('study');
+      else if (data.energyLevel < 0.3) audioMixer.setContext('silence');
+      else audioMixer.setContext('conversation');
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    presenceEngine.startPresenceLoop();
+    return () => presenceEngine.stopPresenceLoop();
+  }, []);
 
   useEffect(() => {
     storeSyncBridge.activate();
@@ -94,6 +115,10 @@ export default function LivingWorld() {
   const handleSend = useCallback(async () => {
     if (!inputText.trim() || isThinking) return;
     const text = inputText.trim();
+    
+    // Perception: تحليل سلوك المستخدم
+    perceptionEngine.analyze(text);
+
     try {
       const orchestration = await capabilityOrchestrator.orchestrate(text, userId);
       if (orchestration.primaryCapability !== 'general' && orchestration.primaryCapability !== null) {
@@ -130,7 +155,13 @@ export default function LivingWorld() {
         <View style={styles.container}>
           <AmbientField />
           
-          <SoulPulse />
+          <LivingLightEntity 
+            isThinking={isThinking}
+            isSpeaking={emotion.isSpeaking}
+            isListening={emotion.isListening}
+            onLongPress={() => EventBus.emit('OPEN_SOUL_OBSERVATORY')}
+          />
+          
           <SoulObservatory />
           <ConnectionField visible={bond.bondLevel >= 2} />
 
@@ -159,24 +190,29 @@ export default function LivingWorld() {
           </View>
 
           <View style={styles.conversationContainer}>
-            {showGreeting && !greetingDone && (
-              <GreetingWord
-                word={greeting.word} colors={greeting.colors}
-                transitionSpeed={greeting.transitionSpeed}
-                fontSize={greeting.fontSize} fontWeight={greeting.fontWeight}
-                onComplete={handleGreetingComplete}
-              />
-            )}
-            {messages.map(msg => (
-              <Text key={msg.id} style={[
-                msg.sender === 'user' ? styles.userMessage : styles.twinMessage,
-                { textAlign: msg.sender === 'user' ? rtl.textAlign : (rtl.isRTL ? 'left' : 'right') }
-              ]}>
-                {msg.text}
-              </Text>
-            ))}
-            {isThinking && thinkingPhase && <ThinkingIndicator phase={thinkingPhase} />}
-            <SilencePresence />
+            <ConversationSpace
+              isThinking={isThinking}
+              isWriting={isWriting}
+            >
+              {showGreeting && !greetingDone && (
+                <GreetingWord
+                  word={greeting.word} colors={greeting.colors}
+                  transitionSpeed={greeting.transitionSpeed}
+                  fontSize={greeting.fontSize} fontWeight={greeting.fontWeight}
+                  onComplete={handleGreetingComplete}
+                />
+              )}
+              {messages.map(msg => (
+                <Text key={msg.id} style={[
+                  msg.sender === 'user' ? styles.userMessage : styles.twinMessage,
+                  { textAlign: msg.sender === 'user' ? rtl.textAlign : (rtl.isRTL ? 'left' : 'right') }
+                ]}>
+                  {msg.text}
+                </Text>
+              ))}
+              {isThinking && thinkingPhase && <ThinkingIndicator phase={thinkingPhase} />}
+              <SilencePresence />
+            </ConversationSpace>
           </View>
 
           <View style={styles.portalContainer}>
@@ -196,8 +232,15 @@ export default function LivingWorld() {
             <View style={styles.inputContainer}>
               <TextInput
                 style={[styles.input, { textAlign: rtl.textAlign }]}
-                value={inputText} onChangeText={setInputText}
-                onSubmitEditing={handleSend} editable={!isThinking}
+                value={inputText}
+                onChangeText={(text) => {
+                  setInputText(text);
+                  setIsWriting(text.length > 0);
+                  if (text.length === 1) perceptionEngine.registerTypingStart();
+                  perceptionEngine.registerKeystroke(text.length);
+                }}
+                onSubmitEditing={handleSend}
+                editable={!isThinking}
                 placeholder={rtl.isRTL ? 'اكتب رسالتك الأولى...' : 'Write your first message...'}
                 placeholderTextColor="#6B5B8A"
               />
@@ -218,7 +261,7 @@ const styles = StyleSheet.create({
   },
   conversationContainer: {
     position: 'absolute', bottom: 280, left: SPACE.lg, right: SPACE.lg,
-    alignItems: 'center', zIndex: 15,
+    zIndex: 15,
   },
   portalContainer: {
     position: 'absolute', bottom: 180, left: 0, right: 0, zIndex: 12,

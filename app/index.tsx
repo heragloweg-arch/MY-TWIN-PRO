@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { router } from 'expo-router';
 import { bootstrapCoordinator, BootstrapPhase } from '../src/core/BootstrapCoordinator';
-import SoulPulse from '../src/renderers/zones/SoulPulse';
+import LivingLightEntity from '../src/renderers/zones/LivingLightEntity';
 import BreathingGlow from '../src/renderers/zones/BreathingGlow';
 import AmbientField from '../src/world/AmbientField';
 
@@ -70,9 +70,9 @@ export default function Index() {
       </Animated.View>
       
       <View style={styles.pulseContainer}>
-        <SoulPulse />
+        <LivingLightEntity />
       </View>
-      
+
       <View style={styles.breathContainer}>
         <BreathingGlow
           color={phase === 'found' ? '#A78BFA' : '#7C3AED'}
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   },
   pulseContainer: {
     position: 'absolute',
-    top: '40%',
+    top: '35%',
   },
   breathContainer: {
     position: 'absolute',

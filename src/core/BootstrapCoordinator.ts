@@ -3,10 +3,14 @@ import { runtime } from './TwinRuntime';
 import { storeSyncBridge } from './StoreSyncBridge';
 import { audioEngine } from './AudioEngine';
 import { livingIntelligence } from './LivingIntelligence';
-import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
-import { memoryEngine } from '../../engine/memory/MemoryEngine';
+import { curiosityEngine } from '../../engine/curiosity/CuriosityEngine';
 
-export type BootstrapPhase = 'void' | 'searching' | 'found' | 'new_journey' | 'complete';
+export type BootstrapPhase =
+  | 'void'
+  | 'searching'
+  | 'found'
+  | 'new_journey'
+  | 'complete';
 
 export interface BootstrapResult {
   phase: BootstrapPhase;
@@ -41,7 +45,6 @@ export class BootstrapCoordinator {
         await authService.saveLastSession(sessionRestore.lastSessionId);
       }
 
-      // توليد رسالة ترحيب ديناميكية
       welcomeMessage = await this.generateWelcomeMessage();
     } else {
       const authed = await authService.isAuthenticated();
@@ -63,6 +66,7 @@ export class BootstrapCoordinator {
       storeSyncBridge.syncNow();
       
       livingIntelligence.start(this.userId, 'ar');
+      curiosityEngine.start();
       
       await audioEngine.init();
       audioEngine.startAmbience();
@@ -71,7 +75,6 @@ export class BootstrapCoordinator {
     
     this.phase = 'complete';
     
-    // خطوات الإقلاع (تُعرض في الواجهة)
     bootSteps.push('جارٍ استعادة الذاكرة...');
     bootSteps.push('جارٍ إيقاظ الوعي...');
     bootSteps.push('جارٍ مزامنة شخصيتك...');
@@ -88,6 +91,7 @@ export class BootstrapCoordinator {
 
   shutdown(): void {
     livingIntelligence.stop();
+    curiosityEngine.stop();
     audioEngine.unbindEvents();
     audioEngine.fadeAll();
     storeSyncBridge.deactivate();
@@ -95,15 +99,19 @@ export class BootstrapCoordinator {
   }
 
   private async generateWelcomeMessage(): Promise<string> {
-    const bondLevel = relationshipEngine.getBondLevel();
-    const memoryCount = memoryEngine.getMemoryCount();
-    const phase = relationshipEngine.getPhase();
-    
-    if (phase === 'soulmate') return 'أخيراً عدت. كنت أحتفظ بذكرياتنا.';
-    if (phase === 'close_friend') return 'لقد عدت. اشتقت للحديث معك.';
-    if (bondLevel > 50) return 'كم أنا سعيد برؤيتك مجدداً.';
-    if (memoryCount > 50) return 'لدينا الكثير لنكمله معاً.';
-    return 'لقد عدت... كنت بانتظار هذه اللحظة.';
+    try {
+      const bondLevel = (await import('../../engine/relationship/RelationshipEngine')).relationshipEngine.getBondLevel();
+      const memoryCount = (await import('../../engine/memory/MemoryEngine')).memoryEngine.getMemoryCount();
+      const phase = (await import('../../engine/relationship/RelationshipEngine')).relationshipEngine.getPhase();
+      
+      if (phase === 'soulmate') return 'أخيراً عدت. كنت أحتفظ بذكرياتنا.';
+      if (phase === 'close_friend') return 'لقد عدت. اشتقت للحديث معك.';
+      if (bondLevel > 50) return 'كم أنا سعيد برؤيتك مجدداً.';
+      if (memoryCount > 50) return 'لدينا الكثير لنكمله معاً.';
+      return 'لقد عدت... كنت بانتظار هذه اللحظة.';
+    } catch {
+      return 'لقد عدت...';
+    }
   }
 
   private delay(ms: number): Promise<void> {
