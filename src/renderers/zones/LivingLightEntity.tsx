@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Canvas, Circle, Paint, BlurMask, RadialGradient, SweepGradient, Group, vec } from "@shopify/react-native-skia";
-import { useSharedValue, withTiming } from "react-native-reanimated";
+import { useSharedValue, withTiming, useDerivedValue } from "react-native-reanimated";
 import { presenceEngine, PresenceState } from '../../../engine/presence/PresenceEngine';
 import { stateBus } from '../../../src/core/StateBus';
 
@@ -37,6 +37,9 @@ export default function LivingLightEntity({
   const gazeX = useSharedValue(110);
   const gazeY = useSharedValue(110);
 
+  // 🆕 إصلاح: استخدام useDerivedValue لحساب نصف قطر شرارة الوعي
+  const sparkRadius = useDerivedValue(() => 3 + focusLevel.value, [focusLevel]);
+
   useEffect(() => {
     const unsubscribe = stateBus.on('presence:state_updated', (event: string, data: any) => {
       const state: PresenceState = data;
@@ -61,7 +64,6 @@ export default function LivingLightEntity({
       }
     });
 
-    // ✅ حلقة الحضور تبدأ من LivingWorld فقط، وليس من هنا
     return () => { unsubscribe(); };
   }, []);
 
@@ -91,7 +93,8 @@ export default function LivingLightEntity({
           <Circle cx={CENTER} cy={CENTER} r={BASE_RADIUS * 0.4} color="#A78BFA" opacity={warmth}>
             <Paint><BlurMask blur={8} style="solid" /></Paint>
           </Circle>
-          <Circle cx={gazeX} cy={gazeY} r={3 + focusLevel} color="#FFFFFF" opacity={focusLevel} />
+          {/* 🆕 استخدام sparkRadius (DerivedValue) بدلاً من 3 + focusLevel */}
+          <Circle cx={gazeX} cy={gazeY} r={sparkRadius} color="#FFFFFF" opacity={focusLevel} />
         </Group>
       </Canvas>
     </View>

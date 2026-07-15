@@ -4,6 +4,8 @@ import { storeSyncBridge } from './StoreSyncBridge';
 import { audioEngine } from './AudioEngine';
 import { livingIntelligence } from './LivingIntelligence';
 import { curiosityEngine } from '../../engine/curiosity/CuriosityEngine';
+import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
+import { memoryEngine } from '../../engine/memory/MemoryEngine';
 
 export type BootstrapPhase =
   | 'void'
@@ -45,14 +47,14 @@ export class BootstrapCoordinator {
         await authService.saveLastSession(sessionRestore.lastSessionId);
       }
 
-      welcomeMessage = await this.generateWelcomeMessage();
+      welcomeMessage = this.generateWelcomeMessage();
     } else {
       const authed = await authService.isAuthenticated();
       if (authed) {
         this.userId = (await authService.getUserId()) || '';
         this.phase = 'found';
         isReturning = true;
-        welcomeMessage = await this.generateWelcomeMessage();
+        welcomeMessage = this.generateWelcomeMessage();
       } else {
         this.phase = 'new_journey';
         isReturning = false;
@@ -90,19 +92,19 @@ export class BootstrapCoordinator {
   }
 
   shutdown(): void {
-    livingIntelligence.stop();
     curiosityEngine.stop();
+    livingIntelligence.stop();
     audioEngine.unbindEvents();
     audioEngine.fadeAll();
     storeSyncBridge.deactivate();
     runtime.stop();
   }
 
-  private async generateWelcomeMessage(): Promise<string> {
+  private generateWelcomeMessage(): string {
     try {
-      const bondLevel = (await import('../../engine/relationship/RelationshipEngine')).relationshipEngine.getBondLevel();
-      const memoryCount = (await import('../../engine/memory/MemoryEngine')).memoryEngine.getMemoryCount();
-      const phase = (await import('../../engine/relationship/RelationshipEngine')).relationshipEngine.getPhase();
+      const phase = relationshipEngine.getPhase();
+      const bondLevel = relationshipEngine.getBondLevel();
+      const memoryCount = memoryEngine.getMemoryCount();
       
       if (phase === 'soulmate') return 'أخيراً عدت. كنت أحتفظ بذكرياتنا.';
       if (phase === 'close_friend') return 'لقد عدت. اشتقت للحديث معك.';

@@ -4,10 +4,9 @@ import { EventBus } from './EventBus';
 import { emotionEngine } from '../../engine/emotion/EmotionEngine';
 import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
 import { presenceEngine } from '../../engine/presence/PresenceEngine';
-import { behavioralIntentEngine } from '../../engine/behavior/BehavioralIntentEngine';
-import { perceptionEngine } from '../../engine/perception/PerceptionEngine';
-import { emotionalTransitionEngine } from '../../engine/emotion/EmotionalTransitionEngine';
-import { consciousnessCoordinator, Decision } from '../coordinators/ConsciousnessCoordinator';
+import { livingPresenceIntegration, LifecycleContext } from './LivingPresenceIntegration';
+import { personalityCoordinator } from '../coordinators/PersonalityCoordinator';
+import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
 import { digitalSoul } from '../soul/DigitalSoul';
 
 export interface ThinkingPhase {
@@ -24,7 +23,6 @@ export interface BrainResponse {
   memoryStored: boolean;
   relationshipDelta: number;
   contextUsed: AssembledContext | null;
-  decision: Decision;
 }
 
 export interface PersonalityDNA {
@@ -57,19 +55,19 @@ export class TwinBrain {
   setPersonalityDNA(dna: Partial<PersonalityDNA>): void { this.personalityDNA = { ...this.personalityDNA, ...dna }; }
   getPersonalityDNA(): PersonalityDNA { return { ...this.personalityDNA }; }
 
-  private buildPersonalityContext(): string {
+  private buildPersonalityContext(fullContext: LifecycleContext): string {
     const dna = this.personalityDNA;
     const attachment = relationshipEngine.getAttachmentModel();
-    const emotion = emotionEngine.getCurrentEmotion();
     const soul = digitalSoul.read();
-    const mood = behavioralIntentEngine.getCurrentMood();
     return `[PERSONALITY]
 Empathy: ${dna.empathy}, Curiosity: ${dna.curiosity}, Humor: ${dna.humor}
 Initiative: ${dna.initiative}, Reflection: ${dna.reflection}
 Logic: ${dna.logic}, Creativity: ${dna.creativity}, Calmness: ${dna.calmness}
 Attachment Style: ${attachment.style}
-Current Emotion: ${emotion}
-Current Mood: ${mood}
+Current Emotion: ${fullContext.currentEmotion}
+Current Mood: ${fullContext.currentMood}
+Intent: ${fullContext.intent}
+Goal: ${fullContext.goal}
 [/PERSONALITY]
 [SOUL]
 Role: ${soul.core.role}
@@ -82,48 +80,31 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
 
   async process(message: string, history: Array<{ role: string; content: string }> = []): Promise<BrainResponse> {
     const phases: ThinkingPhase[] = [];
-    const emotion = emotionEngine.getCurrentEmotion();
-    const intensity = emotionEngine.getIntensity();
-    const decision = await consciousnessCoordinator.decide(message, emotion);
 
-    // 🆕 2) Perception: تحليل سلوك المستخدم
-    const perception = perceptionEngine.analyze(message);
-
-    // 🆕 3) Emotional Transition: إذا كان الرد يحتاج إلى تغيير عاطفي
-    if (decision.action === 'check_in' && emotion === 'neutral') {
-      emotionalTransitionEngine.transitionTo('love', 0.6);
-    }
-
-    // 🆕 A) Intent قبل الحركة
-    const userIntent = behavioralIntentEngine.interpretUserIntent(message);
-    const behaviorDecision = await behavioralIntentEngine.decideBehavior(userIntent, message);
-
-    // إعلام بقية النظام بالسلوك المختار
-    EventBus.emit('behavior:decision', {
-      userIntent,
-      ...behaviorDecision,
-      perception,
-    });
+    // 🆕 الدورة الكاملة: Perception → ... → Presence
+    const fullContext = await livingPresenceIntegration.runFullCycle(message);
+    const decision = fullContext.decision;
 
     // M8: Living Timing
-    const ps = presenceEngine.getLiveState();
-    const timingDelays = this.calculateContextualTiming(emotion, intensity, decision);
+    const ps = fullContext.presenceState;
+    const timingDelays = this.calculateContextualTiming(fullContext.currentEmotion, fullContext.perception.confidence);
     const voiceSpeedFactor = 0.6 + ps.voiceSpeed * 0.8;
     for (const key of Object.keys(timingDelays)) {
       timingDelays[key as keyof typeof timingDelays] = Math.round(timingDelays[key as keyof typeof timingDelays] / voiceSpeedFactor);
     }
 
     // M7: Silence Intelligence
-    if (decision.action === 'stay_silent') {
-      EventBus.emit('SILENCE_START', { level: 4, reason: decision.reason });
-      await this.delay(1500 + (1 - ps.stability) * 2000);
+    if (decision.behavior === 'calm_listening' || decision.behavior === 'reflective_silence') {
+      EventBus.emit('SILENCE_START', { level: decision.behavior === 'reflective_silence' ? 4 : 2, reason: decision.reason });
+      await this.delay(1500);
       return {
-        reply: '', provider: 'consciousness', emotion: 'neutral',
+        reply: '', provider: 'consciousness', emotion: fullContext.currentEmotion,
         thinkingPhases: [{ phase: 'respond', progress: 1.0, label: 'صامت' }],
-        memoryStored: false, relationshipDelta: 0, contextUsed: null, decision,
+        memoryStored: false, relationshipDelta: 0, contextUsed: null,
       };
     }
 
+    // مراحل التفكير المرئية
     this.emitThinking('observe', 0.0, 'يراقب...');
     await this.delay(timingDelays.observe);
     phases.push({ phase: 'observe', progress: 1.0, label: 'يراقب...' });
@@ -136,9 +117,9 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
     await this.delay(timingDelays.recall);
 
     // M10: Presence Memory
-    if (decision.action === 'respond_with_memory' && decision.memoryContent) {
+    if (fullContext.relevantMemories.length > 0 && fullContext.relevantMemories[0].importance > 60) {
       presenceEngine.triggerMemoryPresence();
-      history = [{ role: 'system', content: `Important memory: ${decision.memoryContent}` }, ...history];
+      history = [{ role: 'system', content: `Important memory: ${fullContext.relevantMemories[0].content}` }, ...history];
     }
 
     phases.push({ phase: 'recall', progress: 1.0, label: 'يتذكر...' });
@@ -146,26 +127,18 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
     if (context?.memory?.recentMessages && context.memory.recentMessages.length > 0) {
       EventBus.emit('MEMORY_SURFACED', {
         memoryId: Date.now().toString(), relevance: 0.8, emotionalWeight: 0.7,
-        color: EMOTION_COLORS[context.emotion.primaryEmotion] || '#A855F7',
+        color: EMOTION_COLORS[fullContext.currentEmotion] || '#A855F7',
       });
-    }
-
-    if (decision.action === 'suggest_workspace' && decision.workspaceType) {
-      EventBus.emit('WORKSPACE_CHANGE_REQUESTED', { workspace: decision.workspaceType, confidence: 0.85, trigger: 'consciousness' });
-    }
-    if (decision.action === 'check_in') {
-      history = [{ role: 'system', content: 'Use a warm, caring tone. This is a check-in.' }, ...history];
     }
 
     this.emitThinking('reason', 0.75, 'يفكر...');
     await this.delay(timingDelays.reason);
 
-    // 🆕 إضافة نية السلوك والإدراك إلى سياق الـ prompt
     const enrichedHistory = [
       history[0],
-      { role: 'system', content: this.buildPersonalityContext() },
-      { role: 'system', content: `Behavioral intent: ${behaviorDecision.behavior} (confidence: ${behaviorDecision.confidence})` },
-      { role: 'system', content: `User perception: ${perception.userState} (suggestion: ${perception.suggestion || 'none'})` },
+      { role: 'system', content: this.buildPersonalityContext(fullContext) },
+      { role: 'system', content: `Intent: ${fullContext.intent} | Goal: ${fullContext.goal}` },
+      { role: 'system', content: `User perception: ${fullContext.perception.userState}` },
       ...history.slice(1)
     ];
 
@@ -177,15 +150,18 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
     }
     phases.push({ phase: 'reason', progress: 1.0, label: 'يفكر...' });
 
+    // 9-10. Memory + Soul Update (بعد الرد)
+    await livingPresenceIntegration.consolidateMemory(message, result.reply, fullContext);
+
     this.emitThinking('respond', 1.0, 'يستجيب...');
     phases.push({ phase: 'respond', progress: 1.0, label: 'يستجيب...' });
 
     return {
       reply: result.reply, provider: result.provider,
-      emotion: result.contextUsed.emotion.primaryEmotion,
+      emotion: fullContext.currentEmotion,
       thinkingPhases: phases, memoryStored: true,
       relationshipDelta: result.relationshipDelta,
-      contextUsed: result.contextUsed, decision,
+      contextUsed: result.contextUsed,
     };
   }
 
@@ -214,13 +190,12 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
 
   private delay(ms: number): Promise<void> { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-  private calculateContextualTiming(emotion: string, intensity: number, decision: Decision) {
+  private calculateContextualTiming(emotion: string, intensity: number) {
     let base = 250;
     if (emotion === 'sadness' || emotion === 'fear') base = 400;
     if (emotion === 'anger') base = 300;
     if (emotion === 'joy') base = 200;
     base += intensity * 150;
-    if (decision.action === 'stay_silent') base += 300;
 
     return {
       observe: base * 0.8,

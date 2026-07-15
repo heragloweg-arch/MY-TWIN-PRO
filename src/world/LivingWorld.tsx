@@ -74,7 +74,6 @@ export default function LivingWorld() {
   const [isWriting, setIsWriting] = useState(false);
   const greeting = getGreeting();
 
-  // M6: Presence Sound
   useEffect(() => {
     const unsubscribe = stateBus.on('presence:state_updated', (event: string, data: any) => {
       if (data.warmth > 0.8) audioMixer.setContext('celebration');
@@ -116,7 +115,6 @@ export default function LivingWorld() {
     if (!inputText.trim() || isThinking) return;
     const text = inputText.trim();
     
-    // Perception: تحليل سلوك المستخدم
     perceptionEngine.analyze(text);
 
     try {

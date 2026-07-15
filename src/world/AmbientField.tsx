@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { Canvas, Circle, Paint, BlurMask, RadialGradient, vec, Group } from "@shopify/react-native-skia";
 import { useSharedValue, withTiming } from "react-native-reanimated";
 import { presenceEngine } from '../../../engine/presence/PresenceEngine';
-import { stateBus } from '../../../src/core/StateBus';
+import { stateBus } from '../core/StateBus';
 
 export default function AmbientField() {
   const initialState = presenceEngine.getLiveState();
@@ -13,20 +13,23 @@ export default function AmbientField() {
 
   useEffect(() => {
     const unsubscribe = stateBus.on('presence:state_updated', (event: string, data: any) => {
-      energyLevel.value = withTiming(data.energyLevel, { duration: 3000 });
-      haloIntensity.value = withTiming(data.haloIntensity, { duration: 3000 });
-      warmth.value = withTiming(data.warmth, { duration: 3000 });
+      if (data?.energyLevel !== undefined) {
+        energyLevel.value = withTiming(data.energyLevel, { duration: 3000 });
+      }
+      if (data?.haloIntensity !== undefined) {
+        haloIntensity.value = withTiming(data.haloIntensity, { duration: 3000 });
+      }
+      if (data?.warmth !== undefined) {
+        warmth.value = withTiming(data.warmth, { duration: 3000 });
+      }
     });
     return unsubscribe;
   }, []);
-
-  const SIZE = 300;
 
   return (
     <View style={StyleSheet.absoluteFill}>
       <Canvas style={StyleSheet.absoluteFill}>
         <Group>
-          {/* خلفية ضبابية ديناميكية */}
           <Circle cx={150} cy={200} r={150} opacity={energyLevel}>
             <Paint>
               <BlurMask blur={80} style="normal" />
@@ -38,7 +41,6 @@ export default function AmbientField() {
             />
           </Circle>
           
-          {/* وهج دافئ */}
           <Circle cx={150} cy={100} r={100} opacity={warmth}>
             <Paint>
               <BlurMask blur={60} style="normal" />

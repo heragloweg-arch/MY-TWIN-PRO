@@ -62,7 +62,7 @@ export default function ConversationSpace({
         </View>
         <View style={styles.personalItem}>
           <Text style={styles.personalLabel}>المزاج</Text>
-          <Text style={styles.personalValue}>{emotion.primaryEmotion}</Text>
+          <Text style={styles.personalValue}>{emotion.primaryEmotion || 'neutral'}</Text>
         </View>
       </View>
 
