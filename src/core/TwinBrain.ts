@@ -8,6 +8,10 @@ import { livingPresenceIntegration, LifecycleContext } from './LivingPresenceInt
 import { personalityCoordinator } from '../coordinators/PersonalityCoordinator';
 import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
 import { digitalSoul } from '../soul/DigitalSoul';
+import { curiosityEngine } from '../../engine/curiosity/CuriosityEngine';
+import { perceptionEngine } from '../../engine/perception/PerceptionEngine';
+import { emotionalTransitionEngine } from '../../engine/emotion/EmotionalTransitionEngine';
+import { behavioralIntentEngine } from '../../engine/behavior/BehavioralIntentEngine';
 
 export interface ThinkingPhase {
   phase: 'observe' | 'understand' | 'recall' | 'reason' | 'respond';
@@ -81,7 +85,7 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
   async process(message: string, history: Array<{ role: string; content: string }> = []): Promise<BrainResponse> {
     const phases: ThinkingPhase[] = [];
 
-    // 🆕 الدورة الكاملة: Perception → ... → Presence
+    // 🔄 الدورة الكاملة: Perception → Context → Emotion → Intent → Presence
     const fullContext = await livingPresenceIntegration.runFullCycle(message);
     const decision = fullContext.decision;
 
@@ -150,7 +154,7 @@ Harmony: ${Math.round(soul.resonance.harmony * 100)}%
     }
     phases.push({ phase: 'reason', progress: 1.0, label: 'يفكر...' });
 
-    // 9-10. Memory + Soul Update (بعد الرد)
+    // 9. Memory + 10. Soul Update (بعد الرد)
     await livingPresenceIntegration.consolidateMemory(message, result.reply, fullContext);
 
     this.emitThinking('respond', 1.0, 'يستجيب...');

@@ -107,7 +107,7 @@ export class LivingPresenceIntegration {
     await memoryEngine.store('conversation', `${message} → ${reply}`, 50, context.currentEmotion || 'neutral', ['session']);
 
     if (this.messagesInSession % 10 === 0) {
-      digitalSoul.evolve?.() || console.log('[LivingPresence] digitalSoul.evolve not implemented');
+      try { digitalSoul.evolve?.(); } catch { console.log('[LivingPresence] digitalSoul.evolve not implemented'); }
     }
 
     if (this.messagesInSession % 20 === 0) {

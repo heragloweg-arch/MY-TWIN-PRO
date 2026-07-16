@@ -5,6 +5,9 @@ import { SoulBondsState, soulBonds } from './SoulBonds';
 import { SoulTimelineState, soulTimeline } from './SoulTimeline';
 import { SoulSignatureState, soulSignature } from './SoulSignature';
 import { SoulResonanceState, soulResonance } from './SoulResonance';
+import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
+import { emotionEngine } from '../../engine/emotion/EmotionEngine';
+import { memoryEngine } from '../../engine/memory/MemoryEngine';
 
 export interface DigitalSoulState {
   core: SoulCoreState;
@@ -29,6 +32,22 @@ export class DigitalSoul {
       resonance: soulResonance.read(),
       lastUpdated: new Date().toISOString(),
     };
+  }
+
+  /**
+   * تطور الروح بناءً على الحالة العاطفية والعلاقة والذاكرة.
+   * يُستدعى بعد كل 10 رسائل في الجلسة.
+   */
+  evolve(): void {
+    const phase = relationshipEngine.getPhase();
+    const bond = relationshipEngine.getBondLevel();
+    const emotion = emotionEngine.getCurrentEmotion();
+    const memoryCount = memoryEngine.getMemoryCount();
+
+    // تحديث قيم الروح بناءً على الحالة الحالية
+    soulCore.updateRole(phase, bond);
+    soulValues.updateFromEmotion(emotion);
+    soulResonance.updateHarmony(phase, bond, memoryCount);
   }
 }
 

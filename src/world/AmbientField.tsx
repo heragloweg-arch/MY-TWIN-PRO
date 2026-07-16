@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Canvas, Circle, Paint, BlurMask, RadialGradient, vec, Group } from "@shopify/react-native-skia";
 import { useSharedValue, withTiming } from "react-native-reanimated";
-import { presenceEngine } from '../../../engine/presence/PresenceEngine';
+import { presenceEngine } from '../../engine/presence/PresenceEngine';
 import { stateBus } from '../core/StateBus';
 
 export default function AmbientField() {

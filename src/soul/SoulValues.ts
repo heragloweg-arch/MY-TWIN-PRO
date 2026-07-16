@@ -1,33 +1,35 @@
-import { memoryEngine } from '../../engine/memory/MemoryEngine';
-import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
-import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
+import { emotionEngine } from '../../engine/emotion/EmotionEngine';
 
 export interface SoulValuesState {
   values: string[];
-  dominant: string;
-  confidence: number;
+  dominantValue: string;
 }
 
+const EMOTION_VALUES_MAP: Record<string, string[]> = {
+  joy: ['الامتنان', 'المشاركة', 'التفاؤل'],
+  sadness: ['التعاطف', 'الصبر', 'الحكمة'],
+  love: ['العطاء', 'القبول', 'الدفء'],
+  anger: ['الحماية', 'العدالة', 'الشجاعة'],
+  fear: ['الأمان', 'الحذر', 'الاستعداد'],
+  neutral: ['الفضول', 'الانفتاح', 'التوازن'],
+  focused: ['الدقة', 'المثابرة', 'الانضباط'],
+  inspired: ['الإبداع', 'الشغف', 'الرؤية'],
+};
+
 export class SoulValues {
+  private state: SoulValuesState = {
+    values: ['الفضول', 'الانفتاح', 'التوازن'],
+    dominantValue: 'التوازن',
+  };
+
   read(): SoulValuesState {
-    const ecology = memoryEngine.getEcologyStats();
-    const bond = relationshipEngine.getBondLevel();
-    const intentEvolution = consciousnessCoordinator.getIntentEvolution();
+    return { ...this.state };
+  }
 
-    const values: string[] = [];
-    if (ecology.coreCount > 10) values.push('Learning');
-    if (bond > 60) values.push('Connection');
-    if (relationshipEngine.getPhase() === 'close_friend' || relationshipEngine.getPhase() === 'soulmate') values.push('Family');
-    if (ecology.lifeCount > 3) values.push('Growth');
-    if (intentEvolution.includes('suggest_workspace')) values.push('Focus');
-    if (intentEvolution.includes('check_in')) values.push('Care');
-    values.push('Authenticity');
-
-    return {
-      values: [...new Set(values)],
-      dominant: values[0] || 'Learning',
-      confidence: Math.min(1, bond / 100 + ecology.avgWeight),
-    };
+  updateFromEmotion(emotion: string): void {
+    const values = EMOTION_VALUES_MAP[emotion] || EMOTION_VALUES_MAP.neutral;
+    this.state.values = values;
+    this.state.dominantValue = values[0];
   }
 }
 
