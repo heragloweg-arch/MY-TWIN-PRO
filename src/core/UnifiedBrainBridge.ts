@@ -1,0 +1,144 @@
+/**
+ * UnifiedBrainBridge v2.0 — الحبل الشوكي
+ * =========================================
+ * الحلقة الوحيدة بين Frontend و Backend.
+ * لا يحتوي على أي منطق ذكاء.
+ * يرسل UnifiedInput ويستقبل UnifiedResponse.
+ */
+import { apiClient } from '../services/apiClient';
+
+export interface PerceptionData {
+  typingSpeed: number;
+  messageLength: number;
+  absenceDurationMinutes: number;
+  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
+  userState: 'hesitant' | 'excited' | 'tired' | 'focused' | 'distant' | 'normal';
+}
+
+export interface UnifiedInput {
+  user_id: string;
+  message: string;
+  lang: string;
+  perception?: PerceptionData;
+  history?: Array<{ role: string; content: string }>;
+}
+
+export interface PresenceState {
+  emotion: string;
+  intensity: number;
+  energy: number;
+  warmth: number;
+  halo_color: string;
+  breath_rate: number;
+  voice_tone: string;
+  silence_before_speaking_ms: number;
+}
+
+export interface TwinEmotionalState {
+  current_emotion: string;
+  real_emotion: string;
+  intensity: number;
+  confidence: number;
+  cultural_analysis: string;
+  is_culturally_disguised: boolean;
+  recommendation: string;
+}
+
+export interface BehaviorInfo {
+  intent: string;
+  goal: string;
+  tone: string;
+  silence_before_speaking_ms: number;
+}
+
+export interface MemorySurfaced {
+  id: string;
+  content: string;
+  emotion: string;
+  importance: number;
+  created_at: string;
+}
+
+export interface TwinStateUpdate {
+  bond_delta: number;
+  personality_dna: Record<string, number>;
+  relationship: {
+    bond_level: number;
+    stage: string;
+    trust: number;
+  };
+}
+
+export interface TimingInfo {
+  observe_ms: number;
+  understand_ms: number;
+  recall_ms: number;
+  reason_ms: number;
+  respond_ms: number;
+}
+
+export interface UnifiedResponse {
+  reply: string;
+  presence_state: PresenceState;
+  twin_emotional_state: TwinEmotionalState;
+  behavior: BehaviorInfo;
+  memory_surfaced: MemorySurfaced | null;
+  twin_state_update: TwinStateUpdate;
+  timing: TimingInfo;
+  latency_ms: number;
+}
+
+class UnifiedBrainBridge {
+  private userId: string = '';
+  private lang: string = 'ar';
+  private history: Array<{ role: string; content: string }> = [];
+
+  setUserId(id: string): void {
+    this.userId = id;
+  }
+
+  setLang(lang: string): void {
+    this.lang = lang;
+  }
+
+  addToHistory(role: 'user' | 'assistant', content: string): void {
+    this.history.push({ role, content });
+    if (this.history.length > 50) {
+      this.history = this.history.slice(-50);
+    }
+  }
+
+  clearHistory(): void {
+    this.history = [];
+  }
+
+  /**
+   * الطريقة الوحيدة لإرسال رسالة.
+   * كل منطق الذكاء في الـ Backend.
+   */
+  async process(
+    message: string,
+    perception: PerceptionData,
+  ): Promise<UnifiedResponse> {
+    const input: UnifiedInput = {
+      user_id: this.userId,
+      message,
+      lang: this.lang,
+      perception,
+      history: this.history.slice(-10),
+    };
+
+    const response = await apiClient.post('/api/v2/chat', input);
+    const data: UnifiedResponse = response.data;
+
+    // تحديث السجل المحلي
+    this.addToHistory('user', message);
+    if (data.reply) {
+      this.addToHistory('assistant', data.reply);
+    }
+
+    return data;
+  }
+}
+
+export const unifiedBrainBridge = new UnifiedBrainBridge();
