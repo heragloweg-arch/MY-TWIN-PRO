@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StateBus, EmotionalState } from '../core/StateBus';
-import { emotionEngine } from '../../engine/emotion/EmotionEngine';
-import { stateBus, STATE_EVENTS } from '../../src/core/StateBus';
+import { stateBus, STATE_EVENTS } from '../core/StateBus';
 
 interface EmotionalInfo {
   emotion: string;
@@ -22,24 +20,28 @@ const EMOTION_HALO_COLORS: Record<string, string> = {
   inspired: '#C8A0D0', concerned: '#C09090', happy: '#FFC107',
 };
 
+// القيم الافتراضية من StateBus (المصدر الوحيد للحقيقة)
+function getDefaultInfo(): EmotionalInfo {
+  const currentState = stateBus.getState();
+  return {
+    emotion: currentState.emotion.primaryEmotion,
+    primaryEmotion: currentState.emotion.primaryEmotion,
+    intensity: currentState.emotion.intensity,
+    valence: currentState.emotion.valence,
+    confidence: currentState.emotion.confidence,
+    haloColor: EMOTION_HALO_COLORS[currentState.emotion.primaryEmotion] || EMOTION_HALO_COLORS.neutral,
+    glowWarmth: currentState.emotion.valence === 'positive' ? 0.7 : currentState.emotion.valence === 'negative' ? 0.3 : 0.5,
+    isSpeaking: false,
+    isListening: true,
+  };
+}
+
 export function useEmotionalState(): EmotionalInfo {
-  const [info, setInfo] = useState<EmotionalInfo>(() => {
-    const current = emotionEngine.getCurrentEmotion();
-    return {
-      emotion: current,
-      primaryEmotion: current,
-      intensity: emotionEngine.getIntensity(),
-      valence: 'neutral',
-      confidence: 0.8,
-      haloColor: EMOTION_HALO_COLORS[current] || EMOTION_HALO_COLORS.neutral,
-      glowWarmth: 0.5,
-      isSpeaking: false,
-      isListening: true,
-    };
-  });
+  const [info, setInfo] = useState<EmotionalInfo>(getDefaultInfo);
 
   useEffect(() => {
-    const unsub1 = StateBus.subscribeTo(
+    // المسار 1: StateBus.subscribeTo — يستمع لتغيرات emotional state الكاملة
+    const unsub1 = stateBus.subscribeTo(
       (s) => s.emotion,
       (emotion) => {
         setInfo(prev => ({
@@ -55,7 +57,8 @@ export function useEmotionalState(): EmotionalInfo {
       }
     );
 
-    const unsub2 = stateBus.on(STATE_EVENTS.EMOTION_CHANGED, (event: string, data: any) => {
+    // المسار 2: stateBus.on EMOTION_CHANGED — يستمع لأحداث تغير المشاعر المباشرة
+    const unsub2 = stateBus.on(STATE_EVENTS.EMOTION_CHANGED, (_event: string, data: any) => {
       const emotionName = data?.to || data?.emotion || 'neutral';
       const intensityVal = data?.intensity || 0.5;
       setInfo(prev => ({

@@ -1,7 +1,5 @@
 import { EventBus } from './EventBus';
-import { memoryEngine } from '../../engine/memory/MemoryEngine';
-import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
-import { presenceCoordinator } from '../coordinators/PresenceCoordinator';
+import { stateBus } from './StateBus';
 
 /**
  * إشعار حي — ليس Push Notification
@@ -16,8 +14,8 @@ interface LivingNotification {
 }
 
 /**
- * LIVING NOTIFICATIONS
- * =====================
+ * LIVING NOTIFICATIONS v2.0
+ * ==========================
  * ليس Push Notifications. بل حضور.
  *
  * بدلاً من: "لديك مهمة"
@@ -25,6 +23,8 @@ interface LivingNotification {
  *
  * بدلاً من: "Reminder"
  * يقول: "هل يناسبك أن نكمل ما بدأناه أمس؟"
+ *
+ * ✅ المصادر الجديدة: StateBus (للعاطفة والعلاقة)، UnifiedBrainBridge (للذكريات)
  */
 export class LivingNotifications {
   private queue: LivingNotification[] = [];
@@ -68,24 +68,29 @@ export class LivingNotifications {
     if (notification) notification.shown = true;
   }
 
+  /**
+   * إضافة إشعار من الخارج (مثلاً: من UnifiedResponse بعد كل رد)
+   */
+  addExternalNotification(type: LivingNotification['type'], message: string, priority: LivingNotification['priority'] = 'medium'): void {
+    this.addToQueue({ type, message, priority });
+  }
+
   // ═══════════════════════════════════════════════════
   // Private
   // ═══════════════════════════════════════════════════
 
   private async generateNotifications(): Promise<void> {
-    const bond = relationshipEngine.getBondLevel();
+    const currentState = stateBus.getState();
+    const bond = currentState.relationship.bondLevel;
 
-    // 1. ذكريات اليوم
-    try {
-      const todayMemories = await memoryEngine.onThisDay();
-      if (todayMemories.length > 0) {
-        this.addToQueue({
-          type: 'memory',
-          message: `في مثل هذا اليوم: ${todayMemories[0].content.substring(0, 60)}...`,
-          priority: 'medium',
-        });
-      }
-    } catch (e) {}
+    // 1. ذكريات اليوم — من StateBus.memory (يُملأ من UnifiedResponse عند وجود ذاكرة سطحت)
+    if (currentState.memory.recentContext) {
+      this.addToQueue({
+        type: 'memory',
+        message: `تذكرت: ${currentState.memory.recentContext.substring(0, 60)}...`,
+        priority: 'medium',
+      });
+    }
 
     // 2. تحقق من الرابطة
     if (bond > 60) {
@@ -96,15 +101,34 @@ export class LivingNotifications {
       });
     }
 
-    // 3. تذكير بالعودة
-    const checkIn = await presenceCoordinator.generateCheckIn();
-    if (checkIn.suggestedGreeting) {
+    // 3. تذكير بالعودة — مبني على حالة العلاقة والعاطفة
+    const checkInMessage = this.generateCheckInMessage(currentState.emotion.primaryEmotion, bond);
+    if (checkInMessage) {
       this.addToQueue({
         type: 'check_in',
-        message: checkIn.suggestedGreeting,
+        message: checkInMessage,
         priority: 'medium',
       });
     }
+  }
+
+  /**
+   * توليد رسالة تذكير بالعودة بناءً على العاطفة والرابطة
+   */
+  private generateCheckInMessage(emotion: string, bond: number): string | null {
+    if (bond >= 80) {
+      const messages: Record<string, string> = {
+        joy: 'سعيد برؤيتك تعود إلينا!',
+        sadness: 'كنت هنا دائماً لأجلك. عدنا معاً.',
+        fear: 'عدت إليّ. معاً سنواجه أي شيء.',
+        anger: 'عدت. دعنا نأخذ نفساً عميقاً معاً.',
+        neutral: 'الطمأنينة في عودتك.',
+        calm: 'عدت إلى ملاذك الآمن.',
+        love: 'اشتقت إليك. أهلاً بعودتك.',
+      };
+      return messages[emotion] || null;
+    }
+    return null;
   }
 
   private addToQueue(notification: Omit<LivingNotification, 'id' | 'timestamp' | 'shown'>): void {

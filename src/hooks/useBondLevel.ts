@@ -1,7 +1,7 @@
 /**
  * useBondLevel — Hook موحد لقراءة مستوى الرابطة
  * =================================================
- * يقرأ bondLevel من RelationshipEngine + useRelationshipStore.
+ * يقرأ bondLevel من StateBus + useRelationshipStore.
  */
 
 import { useEffect, useState } from 'react';
@@ -25,7 +25,7 @@ export function useBondLevel(): BondInfo {
   const attachmentStyle = useRelationshipStore((s) => s.attachmentStyle);
   const [bondPercent, setBondPercent] = useState(storeBond);
 
-  // الاستماع لتغيرات StateBus القديم
+  // الاستماع لتغيرات StateBus
   useEffect(() => {
     const unsub = stateBus.on(STATE_EVENTS.BOND_CHANGED, (data: any) => {
       if (typeof data?.bondLevel === 'number') {

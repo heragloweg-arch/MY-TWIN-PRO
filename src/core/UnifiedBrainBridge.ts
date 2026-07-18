@@ -141,4 +141,31 @@ class UnifiedBrainBridge {
   }
 }
 
+
+  /**
+   * تخزين ذاكرة في الـ Backend (للاستخدامات غير المباشرة مثل SessionSummary)
+   */
+  async storeMemory(
+    type: string,
+    content: string,
+    importance: number = 50,
+    emotion: string = 'neutral',
+    relatedTo: string[] = [],
+  ): Promise<void> {
+    try {
+      await apiClient.post('/api/memories', {
+        user_id: this.userId,
+        type,
+        content,
+        importance,
+        emotion,
+        related_to: relatedTo,
+      });
+    } catch (e) {
+      // فشل صامت
+    }
+  }
+
+}
+
 export const unifiedBrainBridge = new UnifiedBrainBridge();

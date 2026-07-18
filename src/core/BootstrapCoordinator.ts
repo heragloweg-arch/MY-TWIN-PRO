@@ -1,11 +1,9 @@
 import { authService } from '../services/authService';
 import { runtime } from './TwinRuntime';
-import { storeSyncBridge } from './StoreSyncBridge';
+import { stateBus } from './StateBus';
+import { unifiedBrainBridge } from './UnifiedBrainBridge';
 import { audioEngine } from './AudioEngine';
-import { livingIntelligence } from './LivingIntelligence';
-import { curiosityEngine } from '../../engine/curiosity/CuriosityEngine';
-import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
-import { memoryEngine } from '../../engine/memory/MemoryEngine';
+import { presenceEngine } from '../../engine/presence/PresenceEngine';
 
 export type BootstrapPhase =
   | 'void'
@@ -47,6 +45,9 @@ export class BootstrapCoordinator {
         await authService.saveLastSession(sessionRestore.lastSessionId);
       }
 
+      // ✅ استعادة حالة الكيان من الـ Backend عبر UnifiedBrainBridge
+      await this.restoreTwinState();
+      
       welcomeMessage = this.generateWelcomeMessage();
     } else {
       const authed = await authService.isAuthenticated();
@@ -54,6 +55,10 @@ export class BootstrapCoordinator {
         this.userId = (await authService.getUserId()) || '';
         this.phase = 'found';
         isReturning = true;
+        
+        // ✅ استعادة حالة الكيان
+        await this.restoreTwinState();
+        
         welcomeMessage = this.generateWelcomeMessage();
       } else {
         this.phase = 'new_journey';
@@ -63,16 +68,23 @@ export class BootstrapCoordinator {
     }
     
     if (this.phase === 'found') {
+      // ✅ بدء الأنظمة الأساسية
       runtime.start();
-      storeSyncBridge.activate();
-      storeSyncBridge.syncNow();
       
-      livingIntelligence.start(this.userId, 'ar');
-      curiosityEngine.start();
+      // ✅ بدء حلقة الحضور
+      presenceEngine.startPresenceLoop();
       
+      // ✅ بدء الصوت
       await audioEngine.init();
       audioEngine.startAmbience();
       audioEngine.bindEvents();
+      
+      // ✅ تحديث StateBus بأننا متصلون
+      stateBus.update({
+        isOnline: true,
+        interfaceState: 'twin',
+        uptime: Date.now(),
+      });
     }
     
     this.phase = 'complete';
@@ -92,24 +104,64 @@ export class BootstrapCoordinator {
   }
 
   shutdown(): void {
-    curiosityEngine.stop();
-    livingIntelligence.stop();
+    // ✅ إيقاف الأنظمة بالترتيب العكسي
+    presenceEngine.stopPresenceLoop();
     audioEngine.unbindEvents();
     audioEngine.fadeAll();
-    storeSyncBridge.deactivate();
     runtime.stop();
+    
+    stateBus.update({
+      isOnline: false,
+      interfaceState: 'dormant',
+    });
+  }
+
+  // ✅ استعادة حالة الكيان من الـ Backend
+  private async restoreTwinState(): Promise<void> {
+    try {
+      unifiedBrainBridge.setUserId(this.userId);
+      
+      // استدعاء خفيف لاستعادة الحالة (بدون رسالة)
+      const response = await unifiedBrainBridge.process('', {
+        typingSpeed: 0,
+        messageLength: 0,
+        absenceDurationMinutes: 0,
+        timeOfDay: 'morning',
+        userState: 'normal',
+      });
+      
+      if (response) {
+        stateBus.updateFromUnifiedResponse(response);
+      }
+    } catch (e) {
+      // فشل صامت — سنبدأ بحالة افتراضية
+      stateBus.update({
+        isOnline: true,
+        interfaceState: 'twin',
+        emotion: {
+          primaryEmotion: 'neutral',
+          intensity: 0.5,
+          valence: 'neutral',
+          confidence: 1.0,
+          duration: 0,
+          trend: 'stable',
+        },
+      });
+    }
   }
 
   private generateWelcomeMessage(): string {
     try {
-      const phase = relationshipEngine.getPhase();
-      const bondLevel = relationshipEngine.getBondLevel();
-      const memoryCount = memoryEngine.getMemoryCount();
+      const currentState = stateBus.getState();
+      const bondLevel = currentState.relationship.bondLevel;
+      const recentContext = currentState.memory.recentContext;
+      const memoryCount = recentContext ? 1 : 0;
       
-      if (phase === 'soulmate') return 'أخيراً عدت. كنت أحتفظ بذكرياتنا.';
-      if (phase === 'close_friend') return 'لقد عدت. اشتقت للحديث معك.';
+      // تحديد phase من bondLevel
+      if (bondLevel >= 95) return 'أخيراً عدت. كنت أحتفظ بذكرياتنا.';
+      if (bondLevel >= 80) return 'لقد عدت. اشتقت للحديث معك.';
       if (bondLevel > 50) return 'كم أنا سعيد برؤيتك مجدداً.';
-      if (memoryCount > 50) return 'لدينا الكثير لنكمله معاً.';
+      if (memoryCount > 0) return 'لدينا ما نكمله معاً.';
       return 'لقد عدت... كنت بانتظار هذه اللحظة.';
     } catch {
       return 'لقد عدت...';

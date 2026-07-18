@@ -1,7 +1,16 @@
 import { capabilityResolver, CapabilityType } from './CapabilityResolver';
 import { unifiedCapabilityMemory } from './UnifiedCapabilityMemory';
-import { consciousnessCoordinator, Decision } from './ConsciousnessCoordinator';
 import { EventBus } from '../core/EventBus';
+
+/**
+ * قرار مبسط (محلي) بدلاً من ConsciousnessCoordinator المحذوف
+ */
+interface Decision {
+  action: string;
+  workspaceType?: string;
+  confidence: number;
+  reasoning: string;
+}
 
 /**
  * نتيجة تنسيق القدرات
@@ -16,17 +25,12 @@ export interface OrchestrationResult {
 }
 
 /**
- * CAPABILITY ORCHESTRATOR
- * ========================
+ * CAPABILITY ORCHESTRATOR v2.0
+ * ==============================
  * ليس قدرة جديدة. بل العقل الذي ينسق بين جميع القدرات.
  *
- * عندما يقول المستخدم "عندي امتحان بكرة وعايز أركز وبعدها اعمل صورة للملخص":
- * 1. يحلل النية
- * 2. يبحث في الذاكرة الموحدة
- * 3. يقرر: Study → AI Image
- * 4. ينسق التنفيذ
- *
- * 0 محركات جديدة. طبقة تنسيق فقط.
+ * ✅ تم إزالة الاعتماد على ConsciousnessCoordinator المحذوف.
+ *    يُستخدم قرار افتراضي بسيط.
  */
 export class CapabilityOrchestrator {
   /**
@@ -37,7 +41,16 @@ export class CapabilityOrchestrator {
     userId: string,
   ): Promise<OrchestrationResult> {
     const primary = capabilityResolver.resolve(message);
-    const decision = await consciousnessCoordinator.decide(message, 'neutral');
+
+    // ✅ قرار محلي بسيط بدلاً من consciousnessCoordinator.decide()
+    const decision: Decision = {
+      action: primary.confidence > 0.6 ? 'activate_capability' : 'general_conversation',
+      workspaceType: primary.capability !== 'general' ? primary.capability : undefined,
+      confidence: primary.confidence,
+      reasoning: primary.confidence > 0.6
+        ? `تم اكتشاف نية قوية نحو ${primary.capability}`
+        : 'لم يتم اكتشاف نية محددة',
+    };
 
     // البحث في الذاكرة الموحدة عن سياق إضافي
     let secondaryCapabilities: CapabilityType[] = [];

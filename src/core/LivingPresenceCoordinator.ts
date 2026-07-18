@@ -1,11 +1,6 @@
 import { EventBus } from './EventBus';
-import { StateBus } from './StateBus';
-import { memoryEngine } from '../../engine/memory/MemoryEngine';
-import { emotionEngine } from '../../engine/emotion/EmotionEngine';
-import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
-import { consciousnessCoordinator } from '../coordinators/ConsciousnessCoordinator';
-import { personalityCoordinator } from '../coordinators/PersonalityCoordinator';
-import { identityEngine } from '../coordinators/IdentityEngine';
+import { stateBus } from './StateBus';
+import { unifiedBrainBridge } from './UnifiedBrainBridge';
 import { audioMixer } from './AudioMixer';
 
 /**
@@ -15,32 +10,19 @@ type AttentionFocus = 'user_message' | 'keyword_repetition' | 'emotional_shift' 
 
 interface AttentionState {
   focus: AttentionFocus;
-  intensity: number;        // 0.0 - 1.0
-  target: string;           // ما الذي يتركز عليه الانتباه
-  duration: number;         // كم استمر هذا التركيز (ms)
+  intensity: number;
+  target: string;
+  duration: number;
 }
 
 /**
- * LIVING PRESENCE COORDINATOR
- * =============================
+ * LIVING PRESENCE COORDINATOR v2.0
+ * =================================
  * الجهاز العصبي المركزي للكيان الحي.
- * ينسق 15 سلوكاً حياً في طبقة واحدة:
+ * ينسق 15 سلوكاً حياً في طبقة واحدة.
  *
- * 1.  Attention System — يراقب الكلمات المكررة والتحولات العاطفية
- * 2.  Curiosity Engine — يولد أسئلة داخلية كل بضعة أيام
- * 3.  Anticipation Engine — يتعلم أنماط الاستخدام ويتوقع
- * 4.  Comfort Zones — يتتبع الأماكن المفضلة ويقترحها
- * 5.  Conversation Rhythm — يحلل إيقاع الحوار
- * 6.  Emotional Recovery — يتعامل مع الأخطاء بلطف
- * 7.  Relationship Seasons — فصول العلاقة
- * 8.  Voice Personality — (مكتمل في VoicePersonalityController)
- * 9.  Visual Breathing — يوحد إيقاع التنفس عبر كل العناصر
- * 10. Temporal Memory — يعرف الزمن النسبي
- * 11. Presence Outside Conversation — الكيان حي حتى بدون رسائل
- * 12. Digital Home — (مكتمل في LivingWorld + SoulObservatory)
- * 13. Narrative Continuity — قصة مستمرة
- * 14. Ambient Intelligence — يستجيب للبطارية والشبكة والوقت
- * 15. Identity Consistency — (مكتمل في IdentityEngine + DigitalSoul)
+ * ✅ المصادر الجديدة: stateBus (للعاطفة والعلاقة والذاكرة)،
+ *    unifiedBrainBridge (لاسترجاع الذاكرة)، EventBus (للأحداث)
  */
 export class LivingPresenceCoordinator {
   // ═══════════════════════════════════════════════════
@@ -50,13 +32,10 @@ export class LivingPresenceCoordinator {
   private keywordTracker: Map<string, number> = new Map();
   private lastAttentionShift: number = Date.now();
 
-  /**
-   * تحليل الانتباه — ماذا يستحق تركيز الكيان الآن؟
-   */
   evaluateAttention(message: string): AttentionState {
     const now = Date.now();
 
-    // 1. كلمات مكررة — ترتفع أهميتها
+    // 1. كلمات مكررة
     const words = message.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     for (const word of words) {
       const count = (this.keywordTracker.get(word) || 0) + 1;
@@ -66,34 +45,29 @@ export class LivingPresenceCoordinator {
         this.attentionState = { focus: 'keyword_repetition', intensity: Math.min(1, count * 0.3), target: word, duration: now - this.lastAttentionShift };
         this.lastAttentionShift = now;
 
-        // رفع وزن الذكرى المرتبطة
-        memoryEngine.retrieve(word, 1).then(memories => {
-          if (memories.length > 0) {
-            memoryEngine.revive(memories[0].id);
-          }
-        });
+        // ✅ محاولة استرجاع ذاكرة مرتبطة عبر EventBus
+        EventBus.emit('ATTENTION_KEYWORD_DETECTED', { word, count });
 
         return this.attentionState;
       }
     }
 
-    // 2. تحول عاطفي مفاجئ
-    const currentEmotion = emotionEngine.getCurrentEmotion();
-    const intensity = emotionEngine.getIntensity();
-    if (intensity > 0.7 && ['sadness', 'anger', 'fear', 'joy'].includes(currentEmotion)) {
-      this.attentionState = { focus: 'emotional_shift', intensity, target: currentEmotion, duration: 0 };
+    // 2. تحول عاطفي مفاجئ — ✅ من stateBus
+    const emotion = stateBus.getState().emotion;
+    if (emotion.intensity > 0.7 && ['sadness', 'anger', 'fear', 'joy'].includes(emotion.primaryEmotion)) {
+      this.attentionState = { focus: 'emotional_shift', intensity: emotion.intensity, target: emotion.primaryEmotion, duration: 0 };
       this.lastAttentionShift = now;
       return this.attentionState;
     }
 
-    // 3. نمط زمني — المستخدم هنا في وقت غير معتاد
+    // 3. نمط زمني
     const hour = new Date().getHours();
     if (hour >= 2 && hour <= 5) {
       this.attentionState = { focus: 'time_pattern', intensity: 0.5, target: 'late_night', duration: 0 };
       return this.attentionState;
     }
 
-    // 4. ذكرى سطحية
+    // 4. رسالة مستخدم
     this.attentionState = { focus: 'user_message', intensity: 0.6, target: message.substring(0, 30), duration: 0 };
     return this.attentionState;
   }
@@ -105,20 +79,29 @@ export class LivingPresenceCoordinator {
   // ═══════════════════════════════════════════════════
   private lastCuriosityTrigger: number = Date.now();
   private curiosityInterval: ReturnType<typeof setInterval> | null = null;
+  private lastDNA: Record<string, number> = { curiosity: 0.8 };
 
-stop(): void {    if (this.curiosityInterval) clearInterval(this.curiosityInterval);    if (this.breathInterval) clearInterval(this.breathInterval);    if (this.idleTimer) clearInterval(this.idleTimer);  }
+  updateDNA(dna: Record<string, number>): void { this.lastDNA = { ...this.lastDNA, ...dna }; }
+
+  stop(): void {
+    if (this.curiosityInterval) clearInterval(this.curiosityInterval);
+    if (this.breathInterval) clearInterval(this.breathInterval);
+    if (this.idleTimer) clearInterval(this.idleTimer);
+  }
+
   startCuriosity(): void {
     this.curiosityInterval = setInterval(() => {
       this.generateCuriosity();
-    }, 259200000); // كل 3 أيام
+    }, 259200000);
   }
 
   private async generateCuriosity(): Promise<void> {
-    const ecology = memoryEngine.getEcologyStats();
-    if (ecology.total < 10) return; // لا فضول بدون ذكريات كافية
+    // ✅ من stateBus: عدد الذكريات
+    const memState = stateBus.getState().memory;
+    if (!memState.recentContext) return;
 
-    const dna = personalityCoordinator.getCurrentDNA();
-    if (dna.curiosity < 0.5) return; // الشخصية ليست فضولية بطبيعتها
+    const dna = this.lastDNA;
+    if (dna.curiosity < 0.5) return;
 
     const curiosityPhrases = [
       'هناك شيء كنت أفكر فيه منذ حديثنا الأخير...',
@@ -126,21 +109,16 @@ stop(): void {    if (this.curiosityInterval) clearInterval(this.curiosityInterv
       'أشعر أن هناك شيئاً لم تخبرني به بعد...',
       'لاحظت نمطاً في أحاديثنا مؤخراً...',
     ];
-
     const phrase = curiosityPhrases[Math.floor(Math.random() * curiosityPhrases.length)];
 
-    EventBus.emit('CURIOSITY_TRIGGERED', {
-      phrase,
-      timestamp: Date.now(),
-    });
-
+    EventBus.emit('CURIOSITY_TRIGGERED', { phrase, timestamp: Date.now() });
     this.lastCuriosityTrigger = Date.now();
   }
 
   // ═══════════════════════════════════════════════════
   // 3. ANTICIPATION ENGINE
   // ═══════════════════════════════════════════════════
-  private usagePatterns: Map<number, number> = new Map(); // hour -> count
+  private usagePatterns: Map<number, number> = new Map();
   private anticipationLevel: number = 0;
 
   recordUsage(): void {
@@ -157,9 +135,8 @@ stop(): void {    if (this.curiosityInterval) clearInterval(this.curiosityInterv
     const hourUsage = this.usagePatterns.get(hour) || 0;
     this.anticipationLevel = Math.min(1, hourUsage / (totalUsage / 24) * 0.5);
 
-    // إذا كان مستوى التوقع عالياً، ارفع Presence قبل الوقت المتوقع
     if (this.anticipationLevel > 0.6) {
-      StateBus.update({ presenceLevel: 2, interfaceState: 'aware' });
+      stateBus.update({ presenceLevel: 2, interfaceState: 'aware' });
       audioMixer.setContext('conversation');
     }
 
@@ -169,12 +146,10 @@ stop(): void {    if (this.curiosityInterval) clearInterval(this.curiosityInterv
   // ═══════════════════════════════════════════════════
   // 4. COMFORT ZONES
   // ═══════════════════════════════════════════════════
-  private worldDurations: Map<string, number> = new Map(); // world -> total ms
+  private worldDurations: Map<string, number> = new Map();
   private currentWorldEntry: number = 0;
 
-  enterWorld(world: string): void {
-    this.currentWorldEntry = Date.now();
-  }
+  enterWorld(world: string): void { this.currentWorldEntry = Date.now(); }
 
   exitWorld(world: string): void {
     if (this.currentWorldEntry > 0) {
@@ -198,32 +173,28 @@ stop(): void {    if (this.curiosityInterval) clearInterval(this.curiosityInterv
   suggestComfortZone(): string | null {
     const zones = this.getComfortZones();
     if (zones.length === 0) return null;
-    const now = new Date();
-    const hour = now.getHours();
-    const suggestion = zones[0];
-    EventBus.emit('COMFORT_ZONE_SUGGESTED', { world: suggestion, hour });
-    return suggestion;
+    EventBus.emit('COMFORT_ZONE_SUGGESTED', { world: zones[0], hour: new Date().getHours() });
+    return zones[0];
   }
 
   // ═══════════════════════════════════════════════════
   // 5. CONVERSATION RHYTHM
   // ═══════════════════════════════════════════════════
   private lastUserMessageTime: number = 0;
-  private conversationPace: number = 3000; // متوسط الوقت بين الرسائل
+  private conversationPace: number = 3000;
 
   analyzeRhythm(): { pace: number; isSlow: boolean; isFast: boolean } {
     const now = Date.now();
     if (this.lastUserMessageTime > 0) {
       const gap = now - this.lastUserMessageTime;
-      // متوسط متحرك
       this.conversationPace = this.conversationPace * 0.7 + gap * 0.3;
     }
     this.lastUserMessageTime = now;
 
     return {
       pace: this.conversationPace,
-      isSlow: this.conversationPace > 10000,  // أبطأ من 10 ثوانٍ
-      isFast: this.conversationPace < 2000,    // أسرع من 2 ثانية
+      isSlow: this.conversationPace > 10000,
+      isFast: this.conversationPace < 2000,
     };
   }
 
@@ -238,58 +209,44 @@ stop(): void {    if (this.curiosityInterval) clearInterval(this.curiosityInterv
     ];
     const phrase = recoveryPhrases[Math.floor(Math.random() * recoveryPhrases.length)];
 
-    EventBus.emit('EMOTIONAL_RECOVERY', {
-      phrase,
-      context,
-      timestamp: Date.now(),
-    });
-
-    // خفض طفيف للثقة ثم استعادة
-    relationshipEngine.recordInteraction('negative', context);
-    setTimeout(() => relationshipEngine.recoverTrust(2), 3000);
+    EventBus.emit('EMOTIONAL_RECOVERY', { phrase, context, timestamp: Date.now() });
+    EventBus.emit('RELATIONSHIP_RECOVER', { amount: 2 });
   }
 
   // ═══════════════════════════════════════════════════
   // 7. RELATIONSHIP SEASONS
   // ═══════════════════════════════════════════════════
   getRelationshipSeason(): string {
-    const bond = relationshipEngine.getBondLevel();
-    const trend = relationshipEngine.analyzeTrend();
-    const phase = relationshipEngine.getPhase();
-
-    if (phase === 'soulmate') return 'Summer ☀️';
-    if (trend === 'growing' && bond > 50) return 'Spring 🌱';
-    if (trend === 'growing') return 'Late Winter ❄️→🌱';
-    if (trend === 'declining') return 'Autumn 🍂';
+    const bond = stateBus.getState().relationship.bondLevel;
+    if (bond >= 95) return 'Summer ☀️';
+    if (bond > 50) return 'Spring 🌱';
     if (bond > 80) return 'Peak Summer 🔥';
     return 'Early Spring 🌱';
   }
 
   // ═══════════════════════════════════════════════════
-  // 9. VISUAL BREATHING — إيقاع موحد لكل العناصر
+  // 9. VISUAL BREATHING
   // ═══════════════════════════════════════════════════
   private unifiedBreathPhase: number = 0;
   private breathInterval: ReturnType<typeof setInterval> | null = null;
 
   startUnifiedBreathing(): void {
     this.breathInterval = setInterval(() => {
-      // دورة تنفس: 4-6 ثوانٍ
       const now = Date.now();
-      const cycleDuration = 5000 + Math.sin(now / 30000) * 1000; // 4-6 ثوانٍ
+      const cycleDuration = 5000 + Math.sin(now / 30000) * 1000;
       const phase = (now % cycleDuration) / cycleDuration;
       this.unifiedBreathPhase = Math.sin(phase * Math.PI * 2) * 0.5 + 0.5;
 
-      // بث الإيقاع الموحد لكل العناصر
-      StateBus.update({
+      const currentBreath = stateBus.getState().breath;
+      stateBus.update({
         breath: {
-          ...StateBus.select(s => s.breath),
           phase: this.unifiedBreathPhase,
           duration: cycleDuration,
           intensity: 0.3 + this.unifiedBreathPhase * 0.2,
           isHolding: this.unifiedBreathPhase > 0.95 || this.unifiedBreathPhase < 0.05,
         },
       });
-    }, 50); // 20fps للتنفس
+    }, 50);
   }
 
   getUnifiedBreathPhase(): number { return this.unifiedBreathPhase; }
@@ -324,25 +281,22 @@ stop(): void {    if (this.curiosityInterval) clearInterval(this.curiosityInterv
     this.idleTimer = setInterval(() => {
       const behavior = this.idleBehaviors[Math.floor(Math.random() * this.idleBehaviors.length)];
       this.currentIdleBehavior = behavior;
-      StateBus.update({
+      stateBus.update({
         avatar: {
-          ...StateBus.select(s => s.avatar),
+          ...stateBus.getState().avatar,
           gazeTarget: behavior === 'يفكر' ? 'internal' : behavior === 'يتأمل' ? 'none' : 'user',
         },
       });
-    }, 8000); // تغيير السلوك كل 8 ثوانٍ
+    }, 8000);
   }
 
   // ═══════════════════════════════════════════════════
   // 13. NARRATIVE CONTINUITY
   // ═══════════════════════════════════════════════════
   getNarrativeStage(): string {
-    const bond = relationshipEngine.getBondLevel();
-    const chapters = relationshipEngine.getChapters();
-    const session = 0; // livingSession.getInteractionCount?.() || 0;
-
-    if (chapters.length >= 5) return 'الملحمة';
-    if (chapters.length >= 3) return 'القصة المتعمقة';
+    const bond = stateBus.getState().relationship.bondLevel;
+    if (bond > 80) return 'الملحمة';
+    if (bond > 60) return 'القصة المتعمقة';
     if (bond > 40) return 'العلاقة المتنامية';
     if (bond > 15) return 'بداية القصة';
     return 'الصفحة الأولى';
@@ -354,8 +308,8 @@ stop(): void {    if (this.curiosityInterval) clearInterval(this.curiosityInterv
   evaluateAmbientContext(): { batteryLow: boolean; networkSlow: boolean; isNightTime: boolean; isQuietHours: boolean } {
     const hour = new Date().getHours();
     return {
-      batteryLow: false,   // يتطلب NativeModules — للتحسين المستقبلي
-      networkSlow: false,  // يتطلب NetInfo — للتحسين المستقبلي
+      batteryLow: false,
+      networkSlow: false,
       isNightTime: hour >= 22 || hour < 5,
       isQuietHours: hour >= 0 && hour < 6,
     };
@@ -363,7 +317,7 @@ stop(): void {    if (this.curiosityInterval) clearInterval(this.curiosityInterv
 
   adaptToAmbient(context: { batteryLow: boolean; networkSlow: boolean; isNightTime: boolean }): void {
     if (context.isNightTime) {
-      StateBus.update({ spaceEnergy: 'tranquil', presenceLevel: 1 });
+      stateBus.update({ spaceEnergy: 'tranquil', presenceLevel: 1 });
       audioMixer.setContext('silence');
     }
     if (context.batteryLow || context.networkSlow) {

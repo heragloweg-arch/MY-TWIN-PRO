@@ -1,8 +1,7 @@
 import { EventBus } from './EventBus';
 import { livingSession } from './LivingSession';
-import { emotionEngine } from '../../engine/emotion/EmotionEngine';
-import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
-import { memoryEngine } from '../../engine/memory/MemoryEngine';
+import { stateBus } from './StateBus';
+import { unifiedBrainBridge } from './UnifiedBrainBridge';
 
 /**
  * خطوة الرحلة
@@ -20,26 +19,17 @@ interface JourneyEntry {
 }
 
 /**
- * JOURNEY RECORDER
- * =================
+ * JOURNEY RECORDER v2.0
+ * ======================
  * يسجل كل خطوة في رحلة المستخدم خلال الجلسة.
- * يستمع للأحداث تلقائياً ويخزن السياق الكامل.
- *
- * - كل انتقال بين العوالم
- * - العاطفة المصاحبة
- * - مستوى الرابطة
- * - الرسالة التي سببت الانتقال
- *
- * 0 محركات جديدة. طبقة تسجيل فقط.
+ * ✅ المصادر الجديدة: stateBus (للعاطفة والرابطة)، unifiedBrainBridge (لتخزين الذاكرة)
  */
 export class JourneyRecorder {
   private entries: JourneyEntry[] = [];
   private isRecording: boolean = false;
   private unsubscribers: Array<() => void> = [];
+  private lastUserMessage: string = '';
 
-  /**
-   * بدء التسجيل
-   */
   start(): void {
     if (this.isRecording) return;
     this.isRecording = true;
@@ -60,11 +50,6 @@ export class JourneyRecorder {
     console.log('[JourneyRecorder] 📍 بدأ التسجيل');
   }
 
-  private lastUserMessage: string = '';
-
-  /**
-   * إيقاف التسجيل
-   */
   stop(): JourneyEntry[] {
     this.isRecording = false;
     this.unsubscribers.forEach(unsub => unsub());
@@ -73,14 +58,15 @@ export class JourneyRecorder {
     return [...this.entries];
   }
 
-  /**
-   * تسجيل خطوة
-   */
   recordStep(from: string | null, to: string, trigger: string, reason: string): void {
     if (!this.isRecording) return;
 
     const session = livingSession.getCurrent();
     if (!session) return;
+
+    // ✅ من stateBus: العاطفة والرابطة
+    const currentEmotion = stateBus.getState().emotion.primaryEmotion;
+    const bondLevel = stateBus.getState().relationship.bondLevel;
 
     const entry: JourneyEntry = {
       sessionId: session.id,
@@ -89,32 +75,26 @@ export class JourneyRecorder {
       trigger,
       reason,
       userMessage: this.lastUserMessage,
-      emotion: emotionEngine.getCurrentEmotion(),
-      bondLevel: relationshipEngine.getBondLevel(),
+      emotion: currentEmotion,
+      bondLevel,
       timestamp: Date.now(),
     };
 
     this.entries.push(entry);
     this.lastUserMessage = '';
 
-    // حفظ في الذاكرة إذا كان انتقالاً مهماً
+    // ✅ حفظ في الذاكرة عبر الجسر الموحد
     if (to !== 'living_world' && to !== 'general') {
       try {
-        memoryEngine.store('event', `${from || 'start'} → ${to}: ${reason}`, 40, entry.emotion, [to]);
+        unifiedBrainBridge.storeMemory('event', `${from || 'start'} → ${to}: ${reason}`, 40, currentEmotion, [to]);
       } catch (e) {}
     }
   }
 
-  /**
-   * الحصول على كل الخطوات
-   */
   getEntries(): JourneyEntry[] {
     return [...this.entries];
   }
 
-  /**
-   * ملخص الرحلة
-   */
   getSummary(): { worldsVisited: string[]; totalSteps: number; dominantEmotion: string } {
     const worlds = [...new Set(this.entries.map(e => e.to))];
     const emotions = this.entries.map(e => e.emotion);

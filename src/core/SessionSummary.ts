@@ -1,9 +1,7 @@
 import { livingSession, SessionState } from './LivingSession';
 import { journeyRecorder } from './JourneyRecorder';
-import { emotionEngine } from '../../engine/emotion/EmotionEngine';
-import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
-import { memoryEngine } from '../../engine/memory/MemoryEngine';
-import { personalityCoordinator } from '../coordinators/PersonalityCoordinator';
+import { stateBus } from './StateBus';
+import { unifiedBrainBridge } from './UnifiedBrainBridge';
 import { EventBus } from './EventBus';
 
 /**
@@ -27,17 +25,12 @@ export interface SessionSummaryData {
 }
 
 /**
- * SESSION SUMMARY BUILDER
- * ========================
+ * SESSION SUMMARY BUILDER v2.0
+ * =============================
  * يبني ملخصاً غنياً للجلسة بعد انتهائها.
  * يستخدمه التوأم لاحقاً للتذكر والتحليل.
  *
- * - عنوان تلقائي للجلسة
- * - ملخص نصي
- * - تحليل عاطفي
- * - أبرز لحظة
- *
- * 0 محركات جديدة. طبقة تحليل فقط.
+ * ✅ المصادر الجديدة: StateBus (للرابطة)، UnifiedBrainBridge (لتخزين الذاكرة)
  */
 export class SessionSummary {
   /**
@@ -50,7 +43,10 @@ export class SessionSummary {
     const journey = journeyRecorder.getSummary();
     const durationMs = Date.now() - session.startedAt - session.totalPausedMs;
     const durationMin = Math.round(durationMs / 60000);
-    const bondDelta = relationshipEngine.getBondLevel() - session.bondAtStart;
+    
+    // ✅ من StateBus: مستوى الرابطة الحالي
+    const currentBond = stateBus.getState().relationship.bondLevel;
+    const bondDelta = currentBond - session.bondAtStart;
 
     const summary: SessionSummaryData = {
       sessionId: session.id,
@@ -69,7 +65,7 @@ export class SessionSummary {
       highlightMoment: this.findHighlightMoment(session),
     };
 
-    // حفظ في الذاكرة طويلة المدى
+    // حفظ في الذاكرة طويلة المدى عبر الجسر الموحد
     this.saveSummary(summary);
 
     // إصدار حدث
@@ -137,8 +133,17 @@ export class SessionSummary {
 
   private async saveSummary(summary: SessionSummaryData): Promise<void> {
     try {
-      await memoryEngine.store('event', summary.summaryText, 75, summary.weather, ['session_summary']);
-    } catch (e) {}
+      // ✅ عبر الجسر الموحد: تخزين الذاكرة في الـ Backend
+      await unifiedBrainBridge.storeMemory(
+        'event',
+        summary.summaryText,
+        75,
+        summary.weather,
+        ['session_summary']
+      );
+    } catch (e) {
+      // فشل صامت — الجلسة لا تزال صالحة
+    }
   }
 }
 

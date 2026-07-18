@@ -1,61 +1,26 @@
 import { EventBus } from './EventBus';
-import { StateBus } from './StateBus';
+import { stateBus } from './StateBus';
 import { audioEngine } from './AudioEngine';
-import { memoryEngine } from '../../engine/memory/MemoryEngine';
-import { relationshipEngine } from '../../engine/relationship/RelationshipEngine';
-import { emotionEngine } from '../../engine/emotion/EmotionEngine';
-import { personalityCoordinator } from '../coordinators/PersonalityCoordinator';
+import { unifiedBrainBridge } from './UnifiedBrainBridge';
 
 export type SessionSeed =
-  | 'manual_conversation'
-  | 'morning_check_in'
-  | 'study_request'
-  | 'business_planning'
-  | 'dream_reflection'
-  | 'notification_resume'
-  | 'voice_conversation'
-  | 'image_creation'
-  | 'task_management'
-  | 'life_coaching'
-  | 'creative_work'
-  | 'general';
+  | 'manual_conversation' | 'morning_check_in' | 'study_request'
+  | 'business_planning' | 'dream_reflection' | 'notification_resume'
+  | 'voice_conversation' | 'image_creation' | 'task_management'
+  | 'life_coaching' | 'creative_work' | 'general';
 
 export type SessionGoal =
-  | 'learn'
-  | 'create'
-  | 'relax'
-  | 'talk'
-  | 'heal'
-  | 'organize'
-  | 'solve_problem'
-  | 'reflect'
-  | 'build'
-  | 'general';
+  | 'learn' | 'create' | 'relax' | 'talk' | 'heal'
+  | 'organize' | 'solve_problem' | 'reflect' | 'build' | 'general';
 
 export type SessionOutcome =
-  | 'completed'
-  | 'interrupted'
-  | 'abandoned'
-  | 'successful'
-  | 'unresolved'
-  | 'continues_later';
+  | 'completed' | 'interrupted' | 'abandoned' | 'successful' | 'unresolved' | 'continues_later';
 
 export type SessionIdentity =
-  | 'study'
-  | 'creative'
-  | 'business'
-  | 'reflection'
-  | 'silent'
-  | 'general';
+  | 'study' | 'creative' | 'business' | 'reflection' | 'silent' | 'general';
 
 export type SessionWeather =
-  | 'calm'
-  | 'warm'
-  | 'focused'
-  | 'dreamy'
-  | 'deep'
-  | 'fast'
-  | 'bright';
+  | 'calm' | 'warm' | 'focused' | 'dreamy' | 'deep' | 'fast' | 'bright';
 
 interface JourneyStep {
   from: string | null;
@@ -126,7 +91,6 @@ export class LivingSession {
 
   start(seed: SessionSeed = 'general'): SessionState {
     const now = Date.now();
-
     const continuationToken = this.lastSessionId || null;
     const isResume = !!continuationToken;
 
@@ -135,9 +99,13 @@ export class LivingSession {
       return this.session!;
     }
 
-    const identity = this.detectSessionIdentity();
-    const weather = this.detectSessionWeather();
-    const bond = relationshipEngine.getBondLevel();
+    // ✅ من stateBus
+    const currentEmotion = stateBus.getState().emotion.primaryEmotion;
+    const currentIntensity = stateBus.getState().emotion.intensity;
+    const bond = stateBus.getState().relationship.bondLevel;
+
+    const identity = this.detectSessionIdentity(currentEmotion);
+    const weather = this.detectSessionWeather(currentEmotion);
 
     this.session = {
       id: `session_${now}_${Math.random().toString(36).substr(2, 6)}`,
@@ -150,7 +118,7 @@ export class LivingSession {
       pausedAt: null,
       totalPausedMs: 0,
       journey: [{ from: null, to: 'living_world', trigger: 'system', reason: 'session_start', timestamp: now }],
-      emotionalArc: [{ emotion: emotionEngine.getCurrentEmotion(), intensity: emotionEngine.getIntensity(), valence: 'neutral', timestamp: now }],
+      emotionalArc: [{ emotion: currentEmotion, intensity: currentIntensity, valence: 'neutral', timestamp: now }],
       sacredMoments: [],
       primarySacredMoment: null,
       secondarySacredMoment: null,
@@ -170,14 +138,10 @@ export class LivingSession {
     this.startGoalDetection();
 
     audioEngine.play('startup_birth');
-    StateBus.update({ presenceLevel: 2, interfaceState: 'aware' });
+    stateBus.update({ presenceLevel: 2, interfaceState: 'aware' });
     EventBus.emit('SESSION_STARTED', {
-      sessionId: this.session.id,
-      seed,
-      identity,
-      weather,
-      goal: this.session.goal,
-      isResume,
+      sessionId: this.session.id, seed, identity, weather,
+      goal: this.session.goal, isResume,
     });
 
     console.log(`[LivingSession] ✨ بدأت: ${identity} | بذرة: ${seed} | هدف: ${this.session.goal} | ${isResume ? 'استئناف' : 'جديدة'}`);
@@ -193,7 +157,7 @@ export class LivingSession {
     if (this.inactivityTimer) { clearTimeout(this.inactivityTimer); this.inactivityTimer = null; }
     if (this.goalDetectionTimer) { clearTimeout(this.goalDetectionTimer); this.goalDetectionTimer = null; }
 
-    StateBus.update({ presenceLevel: 0, interfaceState: 'dormant' });
+    stateBus.update({ presenceLevel: 0, interfaceState: 'dormant' });
     EventBus.emit('SESSION_PAUSED', { sessionId: this.session.id });
     console.log('[LivingSession] ⏸️ متوقفة مؤقتاً');
   }
@@ -207,7 +171,7 @@ export class LivingSession {
     this.session.isActive = true;
     this.startEmotionalTracking();
     this.startInactivityTimer();
-    StateBus.update({ presenceLevel: 2, interfaceState: 'aware' });
+    stateBus.update({ presenceLevel: 2, interfaceState: 'aware' });
     EventBus.emit('SESSION_RESUMED', { sessionId: this.session.id });
     console.log('[LivingSession] ▶️ استؤنفت');
   }
@@ -220,9 +184,14 @@ export class LivingSession {
     const durationMs = endedAt - this.session.startedAt - this.session.totalPausedMs;
     const durationMin = Math.round(durationMs / 60000);
 
+    // ✅ من stateBus
+    const currentEmotion = stateBus.getState().emotion.primaryEmotion;
+    const currentIntensity = stateBus.getState().emotion.intensity;
+    const bondLevel = stateBus.getState().relationship.bondLevel;
+
     this.session.emotionalArc.push({
-      emotion: emotionEngine.getCurrentEmotion(),
-      intensity: emotionEngine.getIntensity(),
+      emotion: currentEmotion,
+      intensity: currentIntensity,
       valence: 'neutral',
       timestamp: endedAt,
     });
@@ -230,10 +199,10 @@ export class LivingSession {
     this.session.outcome = outcome || this.detectOutcome(exitReason, durationMin);
 
     this.session.reflectionSnapshot = {
-      emotion: emotionEngine.getCurrentEmotion(),
-      intensity: emotionEngine.getIntensity(),
+      emotion: currentEmotion,
+      intensity: currentIntensity,
       energy: this.session.energyLevel,
-      bondLevel: relationshipEngine.getBondLevel(),
+      bondLevel,
       currentWorld: this.session.currentWorld,
       currentTopic: '',
       lastThought: '',
@@ -245,7 +214,7 @@ export class LivingSession {
     const avgIntensity = this.session.emotionalArc.reduce((sum, p) => sum + p.intensity, 0) / this.session.emotionalArc.length;
     this.session.depthScore = avgIntensity;
 
-    const bondDelta = relationshipEngine.getBondLevel() - this.session.bondAtStart;
+    const bondDelta = bondLevel - this.session.bondAtStart;
 
     this.lastSessionId = this.session.id;
 
@@ -256,22 +225,18 @@ export class LivingSession {
     if (this.goalDetectionTimer) clearTimeout(this.goalDetectionTimer);
 
     audioEngine.play('workspace_exit');
-    StateBus.update({ presenceLevel: 0, interfaceState: 'dormant' });
+    stateBus.update({ presenceLevel: 0, interfaceState: 'dormant' });
 
     EventBus.emit('SESSION_ENDED', {
-      sessionId: this.session.id,
-      duration: durationMin,
-      seed: this.session.seed,
-      identity: this.session.identity,
-      weather: this.session.weather,
-      goal: this.session.goal,
+      sessionId: this.session.id, duration: durationMin,
+      seed: this.session.seed, identity: this.session.identity,
+      weather: this.session.weather, goal: this.session.goal,
       outcome: this.session.outcome,
       worldsVisited: [...new Set(this.session.journey.map(j => j.to))],
       emotionalArc: this.session.emotionalArc,
       sacredMoments: this.session.sacredMoments.length,
       primarySacredMoment: this.session.primarySacredMoment,
-      bondDelta,
-      depthScore: this.session.depthScore,
+      bondDelta, depthScore: this.session.depthScore,
       continuationToken: this.session.continuationToken,
       reflectionSnapshot: this.session.reflectionSnapshot,
     });
@@ -301,16 +266,15 @@ export class LivingSession {
     EventBus.emit('SESSION_GOAL_CHANGED', { sessionId: this.session.id, goal });
   }
 
-  private detectSessionIdentity(): SessionIdentity {
-    const emotion = emotionEngine.getCurrentEmotion();
+  // ✅ دوال خاصة تستقبل emotion بدلاً من استدعاء emotionEngine
+  private detectSessionIdentity(emotion: string): SessionIdentity {
     if (emotion === 'focused' || emotion === 'curious') return 'study';
     if (emotion === 'inspired' || emotion === 'joy') return 'creative';
     if (emotion === 'calm' && new Date().getHours() >= 22) return 'reflection';
     return 'general';
   }
 
-  private detectSessionWeather(): SessionWeather {
-    const emotion = emotionEngine.getCurrentEmotion();
+  private detectSessionWeather(emotion: string): SessionWeather {
     if (emotion === 'calm') return 'calm';
     if (emotion === 'focused') return 'focused';
     if (emotion === 'joy') return 'bright';
@@ -320,18 +284,12 @@ export class LivingSession {
 
   private detectInitialGoal(seed: SessionSeed): SessionGoal {
     const mapping: Record<SessionSeed, SessionGoal> = {
-      study_request: 'learn',
-      creative_work: 'create',
-      morning_check_in: 'talk',
-      life_coaching: 'heal',
-      task_management: 'organize',
-      business_planning: 'solve_problem',
-      dream_reflection: 'reflect',
-      manual_conversation: 'general',
-      notification_resume: 'general',
-      voice_conversation: 'talk',
-      image_creation: 'create',
-      general: 'general',
+      study_request: 'learn', creative_work: 'create',
+      morning_check_in: 'talk', life_coaching: 'heal',
+      task_management: 'organize', business_planning: 'solve_problem',
+      dream_reflection: 'reflect', manual_conversation: 'general',
+      notification_resume: 'general', voice_conversation: 'talk',
+      image_creation: 'create', general: 'general',
     };
     return mapping[seed] || 'general';
   }
@@ -354,8 +312,7 @@ export class LivingSession {
   private startGoalDetection(): void {
     this.goalDetectionTimer = setTimeout(() => {
       if (!this.session?.isActive) return;
-      const journey = this.session.journey;
-      const worlds = journey.map(j => j.to);
+      const worlds = this.session.journey.map(j => j.to);
       if (worlds.includes('study')) this.updateGoal('learn');
       else if (worlds.includes('code_lab')) this.updateGoal('build');
       else if (worlds.includes('business')) this.updateGoal('solve_problem');
@@ -389,14 +346,17 @@ export class LivingSession {
     if (this.emotionalInterval) return;
     this.emotionalInterval = setInterval(() => {
       if (!this.session?.isActive) return;
-      this.session.emotionalArc.push({
-        emotion: emotionEngine.getCurrentEmotion(),
-        intensity: emotionEngine.getIntensity(),
+      // ✅ من stateBus
+      const currentEmotion = stateBus.getState().emotion.primaryEmotion;
+      const currentIntensity = stateBus.getState().emotion.intensity;
+      this.session!.emotionalArc.push({
+        emotion: currentEmotion,
+        intensity: currentIntensity,
         valence: 'neutral',
         timestamp: Date.now(),
       });
-      if (this.session.emotionalArc.length > 200) {
-        this.session.emotionalArc = this.session.emotionalArc.slice(-100);
+      if (this.session!.emotionalArc.length > 200) {
+        this.session!.emotionalArc = this.session!.emotionalArc.slice(-100);
       }
     }, 30000);
   }
@@ -413,8 +373,8 @@ export class LivingSession {
     try {
       const worlds = [...new Set(this.session.journey.map(j => j.to))];
       const summary = `${this.session.seed} → ${this.session.goal} | ${durationMin}د | ${worlds.length} عوالم | ${this.session.sacredMoments.length} لحظات | نتيجة: ${this.session.outcome}`;
-      await memoryEngine.store('event', summary, 70, this.session.weather, ['session', this.session.seed]);
-    memoryEngine.applyAging();
+      // ✅ عبر الجسر الموحد
+      await unifiedBrainBridge.storeMemory('event', summary, 70, this.session.weather, ['session', this.session.seed]);
     } catch (e) {}
   }
 }
