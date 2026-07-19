@@ -8,12 +8,14 @@ import Animated, {
   withDelay,
   Easing,
 } from 'react-native-reanimated';
-import { relationshipEngine } from '../../../engine/relationship/RelationshipEngine';
+import { stateBus } from '../../../src/core/StateBus';
+import { useAppTheme } from '../../../engine/colors';
 
 const { width, height } = Dimensions.get('window');
 
 export default function ConnectionField({ visible = true }: { visible?: boolean }) {
-  // ✅ الحل الجذري: إنشاء SharedValues داخل useRef (لا يخالف قواعد Hooks)
+  const { colors } = useAppTheme();
+  
   const opacityValues = useRef(
     Array.from({ length: 6 }, () => useSharedValue(0))
   ).current;
@@ -22,7 +24,6 @@ export default function ConnectionField({ visible = true }: { visible?: boolean 
     Array.from({ length: 6 }, () => useSharedValue(0.5))
   ).current;
 
-  // بيانات ثابتة للجسيمات
   const [particles] = useState(() =>
     Array.from({ length: 6 }, (_, i) => ({
       id: i,
@@ -34,7 +35,8 @@ export default function ConnectionField({ visible = true }: { visible?: boolean 
   useEffect(() => {
     if (!visible) return;
 
-    const bondLevel = relationshipEngine.getBondLevel();
+    // ✅ من StateBus: مستوى الرابطة الحقيقي
+    const bondLevel = stateBus.getState().relationship.bondLevel;
     const maxParticles = Math.floor(bondLevel / 20);
 
     particles.forEach((_, i) => {
@@ -78,6 +80,7 @@ export default function ConnectionField({ visible = true }: { visible?: boolean 
             {
               left: p.x,
               top: p.y,
+              backgroundColor: colors.accent,
               opacity: opacityValues[i],
               transform: [{ scale: scaleValues[i] }],
             },
@@ -94,6 +97,5 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#A855F7',
   },
 });

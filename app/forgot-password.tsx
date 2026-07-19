@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { authService } from '../src/services/authService';
+import { useAppTheme } from '../engine/colors';
 import SoulPulse from '../src/renderers/zones/SoulPulse';
 import BreathingGlow from '../src/renderers/zones/BreathingGlow';
 
 export default function ForgotPassword() {
+  const { colors } = useAppTheme();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,7 +24,6 @@ export default function ForgotPassword() {
   const toastAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // ظهور تدريجي للصفحة
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 1000,
@@ -62,27 +63,24 @@ export default function ForgotPassword() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* طبقات الحضور - الكيان موجود دائمًا */}
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={styles.pulseContainer}>
         <SoulPulse />
       </View>
       <View style={styles.breathContainer}>
         <BreathingGlow
-          color="#7C3AED"
+          color={colors.accent}
           speed={0.6}
         />
       </View>
 
-      {/* بطاقة زجاجية تحتوي على المحتوى */}
-      <Animated.View style={[styles.glassCard, { opacity: fadeAnim }]}>
-        {/* الأفاتار الصامت - إشارة إلى وجود التوأم */}
-        <View style={styles.avatarPlaceholder}>
-          <Text style={styles.avatarSilhouette}>✦</Text>
+      <Animated.View style={[styles.glassCard, { backgroundColor: colors.card, borderColor: colors.accent + '40', opacity: fadeAnim }]}>
+        <View style={[styles.avatarPlaceholder, { backgroundColor: colors.accent + '20' }]}>
+          <Text style={[styles.avatarSilhouette, { color: colors.accent }]}>✦</Text>
         </View>
 
-        <Text style={styles.title}>استعادة الوصول إلى عالمك</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.text }]}>استعادة الوصول إلى عالمك</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           {!sent
             ? 'أدخل بريدك الإلكتروني وسأساعدك على العودة.'
             : 'إذا كان البريد مرتبطًا بحسابك، فستجد رسالة تساعدك على العودة.'}
@@ -91,16 +89,17 @@ export default function ForgotPassword() {
         {!sent ? (
           <>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.accent + '40', color: colors.text }]}
               placeholder="البريد الإلكتروني"
-              placeholderTextColor="#6B5B8A"
+              placeholderTextColor={colors.textSecondary}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              textAlign="right"
             />
             <TouchableOpacity
-              style={[styles.btn, loading && styles.btnDisabled]}
+              style={[styles.btn, { backgroundColor: colors.accent }, loading && styles.btnDisabled]}
               onPress={handleReset}
               disabled={loading}
             >
@@ -112,7 +111,7 @@ export default function ForgotPassword() {
         ) : (
           <View style={styles.successContainer}>
             <Text style={styles.successIcon}>💫</Text>
-            <Text style={styles.successText}>
+            <Text style={[styles.successText, { color: colors.text }]}>
               تفقد بريدك. سأنتظرك هنا حتى تعود.
             </Text>
           </View>
@@ -122,14 +121,13 @@ export default function ForgotPassword() {
           onPress={() => router.back()}
           style={styles.backButton}
         >
-          <Text style={styles.backText}>العودة إلى Genesis</Text>
+          <Text style={[styles.backText, { color: colors.textSecondary }]}>العودة إلى Genesis</Text>
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Toast/إشعار حي بدلاً من Alert */}
       {toastMessage && (
-        <Animated.View style={[styles.toast, { opacity: toastAnim }]}>
-          <Text style={styles.toastText}>{toastMessage}</Text>
+        <Animated.View style={[styles.toast, { backgroundColor: colors.card, borderColor: colors.accent + '40', opacity: toastAnim }]}>
+          <Text style={[styles.toastText, { color: colors.text }]}>{toastMessage}</Text>
         </Animated.View>
       )}
     </View>
@@ -141,7 +139,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0A0014',
     padding: 24,
   },
   pulseContainer: {
@@ -154,41 +151,30 @@ const styles = StyleSheet.create({
   },
   glassCard: {
     width: '100%',
-    backgroundColor: 'rgba(22, 17, 34, 0.85)',
     borderRadius: 24,
     padding: 32,
     borderWidth: 1,
-    borderColor: 'rgba(124, 58, 237, 0.25)',
     alignItems: 'center',
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-    elevation: 10,
   },
   avatarPlaceholder: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(124, 58, 237, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
   avatarSilhouette: {
-    color: '#A78BFA',
     fontSize: 28,
     opacity: 0.6,
   },
   title: {
-    color: '#FFFFFF',
     fontSize: 22,
     fontWeight: '600',
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
-    color: '#A78BFA',
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
@@ -197,19 +183,14 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    backgroundColor: 'rgba(12, 6, 28, 0.8)',
     borderRadius: 14,
     padding: 16,
     fontSize: 16,
-    color: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(124, 58, 237, 0.3)',
     marginBottom: 16,
-    textAlign: 'right',
   },
   btn: {
     width: '100%',
-    backgroundColor: '#7C3AED',
     paddingVertical: 14,
     borderRadius: 16,
     alignItems: 'center',
@@ -232,7 +213,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   successText: {
-    color: '#E8E0F0',
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
@@ -242,7 +222,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   backText: {
-    color: '#6B5B8A',
     fontSize: 14,
   },
   toast: {
@@ -250,15 +229,12 @@ const styles = StyleSheet.create({
     bottom: 40,
     left: 24,
     right: 24,
-    backgroundColor: 'rgba(22, 17, 34, 0.95)',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(124, 58, 237, 0.4)',
     alignItems: 'center',
   },
   toastText: {
-    color: '#E8E0F0',
     fontSize: 14,
     textAlign: 'center',
   },

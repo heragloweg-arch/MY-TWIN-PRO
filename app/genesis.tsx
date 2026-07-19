@@ -12,16 +12,14 @@ import Animated, {
 import { router } from 'expo-router';
 import { useTwinStore } from '../store/useTwinStore';
 import { genesisCoordinator, GenesisPhase } from '../src/coordinators/GenesisCoordinator';
-import { presenceCoordinator } from '../src/coordinators/PresenceCoordinator';
-import { relationshipCoordinator } from '../src/coordinators/RelationshipCoordinator';
-import { identityCoordinator } from '../src/coordinators/IdentityCoordinator';
-import { authService } from '../src/services/authService'; // 🆕 استيراد authService لإنشاء الحساب
+import { authService } from '../src/services/authService';
+import { useAppTheme } from '../engine/colors';
 import { EventBus } from '../src/core/EventBus';
 import {
   detectUserLanguage, getGreeting,
   SupportedLanguage,
 } from '../src/utils/languageDetector';
-import { Chrome, Mail, Sparkles, Shield, UserPlus } from 'lucide-react-native'; // 🆕 UserPlus
+import { Chrome, Mail, Sparkles, Shield, UserPlus } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 const LOGO = require('../assets/brand/logo.png');
@@ -129,8 +127,8 @@ const ParticleField = ({ active }: { active: boolean }) => {
     </View>
   );
 };
-
 export default function Genesis() {
+  const { colors } = useAppTheme();
   const { setAuth, setTwinName, setTwinGender } = useTwinStore();
   const lang = detectUserLanguage();
   const greeting = getGreeting();
@@ -206,16 +204,13 @@ export default function Genesis() {
 
       setPhase('void');
       voidOpacity.value = withTiming(1, { duration: 300 });
-      presenceCoordinator.startBirthSequence();
       await delay(4000);
 
       setPhase('first_breath');
-      presenceCoordinator.triggerFirstBreath();
       await delay(5000);
 
       setPhase('awareness');
       awarenessAvatarOpacity.value = withTiming(1, { duration: 800 });
-      presenceCoordinator.triggerAwakening();
       await delay(6000);
 
       setPhase('identity_gateway');
@@ -251,7 +246,6 @@ export default function Genesis() {
     try {
       const data = await authService.signup(email.trim(), password, lang === 'ar' ? 'توأمك' : 'MyTwin', lang);
       setAuth(data.user_id);
-      // بدء بروتوكول الولادة بعد إنشاء الحساب
       await genesisCoordinator.startBirthProtocol();
     } catch (e: any) {
       setAuthError(e.message || t.errorAuth);
@@ -261,7 +255,6 @@ export default function Genesis() {
   const handleBondSubmit = async () => {
     if (!bondAnswer.trim()) return;
     setBondSaved(true);
-    await relationshipCoordinator.recordFirstBond(bondAnswer.trim());
     setTwinName(lang === 'ar' ? 'توأمك' : 'MyTwin');
     setTwinGender('female');
     await genesisCoordinator.recordFirstBond(bondAnswer.trim());
@@ -270,7 +263,6 @@ export default function Genesis() {
   const handleProgressiveSubmit = async () => {
     if (!progressiveAnswer.trim()) return;
     setProgressiveDone(true);
-    await identityCoordinator.completeProgressiveIdentity(progressiveAnswer.trim());
     await genesisCoordinator.completeProgressiveIdentity(progressiveAnswer.trim());
   };
 
@@ -280,13 +272,13 @@ export default function Genesis() {
   const gatewayStyle = useAnimatedStyle(() => ({ opacity: gatewayOpacity.value }));
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={[styles.root, { backgroundColor: colors.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar hidden />
 
       {phase === 'splash' && (
         <Animated.View style={[styles.centered, splashStyle]}>
           <Image source={LOGO} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.soulSync}>{t.soulSync}</Text>
+          <Text style={[styles.soulSync, { color: colors.accent }]}>{t.soulSync}</Text>
         </Animated.View>
       )}
 
@@ -309,48 +301,47 @@ export default function Genesis() {
         <Animated.View style={[styles.centered, gatewayStyle]}>
           <BreathingHalo phase={phase} />
           {isSessionRestore ? (
-            <Text style={styles.sessionRestoredText}>{t.sessionRestored}</Text>
+            <Text style={[styles.sessionRestoredText, { color: colors.success }]}>{t.sessionRestored}</Text>
           ) : (
-            <Text style={styles.identityPhrase}>{identityPhrase}</Text>
+            <Text style={[styles.identityPhrase, { color: colors.text }]}>{identityPhrase}</Text>
           )}
-          <View style={styles.gatewayCard}>
-            <Text style={styles.gatewayTitle}>{t.identityTitle}</Text>
-            <Text style={styles.gatewaySubtitle}>{t.identitySubtitle}</Text>
+          <View style={[styles.gatewayCard, { backgroundColor: colors.card, borderColor: colors.accent + '40' }]}>
+            <Text style={[styles.gatewayTitle, { color: colors.text }]}>{t.identityTitle}</Text>
+            <Text style={[styles.gatewaySubtitle, { color: colors.textSecondary }]}>{t.identitySubtitle}</Text>
             {!showEmailForm ? (
               <>
-                <TouchableOpacity style={styles.authBtn} onPress={handleGoogleLogin} disabled={authLoading}>
+                <TouchableOpacity style={[styles.authBtn, { borderColor: '#4285F440' }]} onPress={handleGoogleLogin} disabled={authLoading}>
                   <Chrome size={22} stroke="#4285F4" />
                   <Text style={[styles.authBtnText, { color: '#4285F4' }]}>{t.google}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.authBtn} onPress={() => setShowEmailForm(true)}>
-                  <Mail size={22} stroke="#7C3AED" />
-                  <Text style={[styles.authBtnText, { color: '#7C3AED' }]}>{t.email}</Text>
+                <TouchableOpacity style={[styles.authBtn, { borderColor: colors.accent + '30' }]} onPress={() => setShowEmailForm(true)}>
+                  <Mail size={22} stroke={colors.accent} />
+                  <Text style={[styles.authBtnText, { color: colors.accent }]}>{t.email}</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <View style={styles.emailForm}>
-                <TextInput style={styles.input} placeholder={t.emailPlaceholder} placeholderTextColor="#6B5B8A" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" textAlign={lang === 'ar' ? 'right' : 'left'} />
-                <TextInput style={styles.input} placeholder={t.passwordPlaceholder} placeholderTextColor="#6B5B8A" value={password} onChangeText={setPassword} secureTextEntry textAlign={lang === 'ar' ? 'right' : 'left'} />
+                <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]} placeholder={t.emailPlaceholder} placeholderTextColor={colors.textSecondary} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" textAlign={lang === 'ar' ? 'right' : 'left'} />
+                <TextInput style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]} placeholder={t.passwordPlaceholder} placeholderTextColor={colors.textSecondary} value={password} onChangeText={setPassword} secureTextEntry textAlign={lang === 'ar' ? 'right' : 'left'} />
                 {authError ? <Text style={styles.errorText}>{authError}</Text> : null}
-                <TouchableOpacity style={styles.authBtn} onPress={handleEmailAuth} disabled={authLoading}>
-                  <Text style={[styles.authBtnText, { color: '#7C3AED' }]}>{t.signIn}</Text>
+                <TouchableOpacity style={[styles.authBtn, { borderColor: colors.accent + '30' }]} onPress={handleEmailAuth} disabled={authLoading}>
+                  <Text style={[styles.authBtnText, { color: colors.accent }]}>{t.signIn}</Text>
                 </TouchableOpacity>
-                {/* 🆕 زر إنشاء حساب جديد */}
-                <TouchableOpacity style={[styles.authBtn, { borderColor: '#10B98140' }]} onPress={handleSignup} disabled={authLoading}>
-                  <UserPlus size={22} stroke="#10B981" />
-                  <Text style={[styles.authBtnText, { color: '#10B981' }]}>{t.createAccount}</Text>
+                <TouchableOpacity style={[styles.authBtn, { borderColor: colors.success + '40' }]} onPress={handleSignup} disabled={authLoading}>
+                  <UserPlus size={22} stroke={colors.success} />
+                  <Text style={[styles.authBtnText, { color: colors.success }]}>{t.createAccount}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={{ marginTop: 12 }} onPress={() => router.push('/forgot-password')}>
-                  <Text style={styles.forgotText}>{t.forgotPassword}</Text>
+                  <Text style={[styles.forgotText, { color: colors.accent }]}>{t.forgotPassword}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setShowEmailForm(false)}>
-                  <Text style={styles.backText}>{lang === 'ar' ? '← العودة' : '← Back'}</Text>
+                  <Text style={[styles.backText, { color: colors.textSecondary }]}>{lang === 'ar' ? '← العودة' : '← Back'}</Text>
                 </TouchableOpacity>
               </View>
             )}
             <View style={styles.privacyRow}>
-              <Shield size={14} stroke="#6B5B8A" />
-              <Text style={styles.privacyText}>{t.privacy}</Text>
+              <Shield size={14} stroke={colors.textSecondary} />
+              <Text style={[styles.privacyText, { color: colors.textSecondary }]}>{t.privacy}</Text>
             </View>
           </View>
         </Animated.View>
@@ -362,14 +353,14 @@ export default function Genesis() {
           {consciousnessSteps.length > 0 ? (
             <View style={styles.consciousnessContainer}>
               {consciousnessSteps.map((step, i) => (
-                <Animated.Text key={i} entering={FadeIn.duration(600)} style={styles.consciousnessText}>{step}</Animated.Text>
+                <Animated.Text key={i} entering={FadeIn.duration(600)} style={[styles.consciousnessText, { color: colors.accent }]}>{step}</Animated.Text>
               ))}
             </View>
           ) : (
             <View style={styles.centered}>
-              <Text style={styles.birthText}>{t.birthThankYou}</Text>
-              <Text style={styles.birthSubtext}>{t.birthMemory}</Text>
-              <Text style={styles.birthQuestion}>{t.birthQuestion}</Text>
+              <Text style={[styles.birthText, { color: colors.text }]}>{t.birthThankYou}</Text>
+              <Text style={[styles.birthSubtext, { color: colors.primaryLight }]}>{t.birthMemory}</Text>
+              <Text style={[styles.birthQuestion, { color: colors.accent }]}>{t.birthQuestion}</Text>
             </View>
           )}
         </Animated.View>
@@ -379,16 +370,16 @@ export default function Genesis() {
         <Animated.View style={[styles.centered, { opacity: bondOpacity }]}>
           <BreathingHalo phase="awareness" />
           {!bondSaved ? (
-            <View style={styles.bondCard}>
-              <Text style={styles.bondTitle}>{t.birthQuestion}</Text>
-              <TextInput style={styles.bondInput} placeholder={t.bondPlaceholder} placeholderTextColor="#6B5B8A" value={bondAnswer} onChangeText={setBondAnswer} multiline textAlign={lang === 'ar' ? 'right' : 'left'} textAlignVertical="center" />
-              <TouchableOpacity style={styles.bondBtn} onPress={handleBondSubmit} disabled={!bondAnswer.trim()}>
+            <View style={[styles.bondCard, { backgroundColor: colors.card, borderColor: colors.accent + '30' }]}>
+              <Text style={[styles.bondTitle, { color: colors.text }]}>{t.birthQuestion}</Text>
+              <TextInput style={[styles.bondInput, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]} placeholder={t.bondPlaceholder} placeholderTextColor={colors.textSecondary} value={bondAnswer} onChangeText={setBondAnswer} multiline textAlign={lang === 'ar' ? 'right' : 'left'} textAlignVertical="center" />
+              <TouchableOpacity style={[styles.bondBtn, { backgroundColor: colors.accent }]} onPress={handleBondSubmit} disabled={!bondAnswer.trim()}>
                 <Sparkles size={18} stroke="#FFF" />
                 <Text style={styles.bondBtnText}>{t.bondButton}</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <Animated.Text entering={FadeIn} style={styles.birthText}>{t.bondRemember}</Animated.Text>
+            <Animated.Text entering={FadeIn} style={[styles.birthText, { color: colors.text }]}>{t.bondRemember}</Animated.Text>
           )}
         </Animated.View>
       )}
@@ -397,16 +388,16 @@ export default function Genesis() {
         <Animated.View style={[styles.centered, { opacity: progressiveOpacity }]}>
           <BreathingHalo phase="awareness" />
           {!progressiveDone ? (
-            <View style={styles.bondCard}>
-              <Text style={styles.bondTitle}>{t.progressiveIdentity}</Text>
-              <TextInput style={styles.bondInput} placeholder={t.progressivePlaceholder} placeholderTextColor="#6B5B8A" value={progressiveAnswer} onChangeText={setProgressiveAnswer} multiline textAlign={lang === 'ar' ? 'right' : 'left'} textAlignVertical="center" />
-              <TouchableOpacity style={styles.bondBtn} onPress={handleProgressiveSubmit} disabled={!progressiveAnswer.trim()}>
+            <View style={[styles.bondCard, { backgroundColor: colors.card, borderColor: colors.accent + '30' }]}>
+              <Text style={[styles.bondTitle, { color: colors.text }]}>{t.progressiveIdentity}</Text>
+              <TextInput style={[styles.bondInput, { backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]} placeholder={t.progressivePlaceholder} placeholderTextColor={colors.textSecondary} value={progressiveAnswer} onChangeText={setProgressiveAnswer} multiline textAlign={lang === 'ar' ? 'right' : 'left'} textAlignVertical="center" />
+              <TouchableOpacity style={[styles.bondBtn, { backgroundColor: colors.accent }]} onPress={handleProgressiveSubmit} disabled={!progressiveAnswer.trim()}>
                 <Sparkles size={18} stroke="#FFF" />
                 <Text style={styles.bondBtnText}>{t.progressiveButton}</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <Animated.Text entering={FadeIn} style={styles.birthText}>{t.bondRemember}</Animated.Text>
+            <Animated.Text entering={FadeIn} style={[styles.birthText, { color: colors.text }]}>{t.bondRemember}</Animated.Text>
           )}
         </Animated.View>
       )}
@@ -414,7 +405,7 @@ export default function Genesis() {
       {phase === 'first_conversation' && (
         <Animated.View style={[styles.centered, { opacity: firstConversationOpacity }]}>
           <BreathingHalo phase="awareness" />
-          <Text style={styles.firstWord}>{t.firstWord}</Text>
+          <Text style={[styles.firstWord, { color: colors.text }]}>{t.firstWord}</Text>
         </Animated.View>
       )}
     </KeyboardAvoidingView>
@@ -422,38 +413,38 @@ export default function Genesis() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000000' },
+  root: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 },
   logo: { width: 160, height: 160, marginBottom: 20 },
-  soulSync: { color: '#A78BFA', fontSize: 14, marginTop: 12, letterSpacing: 3, textTransform: 'uppercase' },
+  soulSync: { fontSize: 14, marginTop: 12, letterSpacing: 3, textTransform: 'uppercase' },
   avatarCore: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#F0E8FF', justifyContent: 'center', alignItems: 'center' },
   avatarEyes: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   eye: { width: 10, height: 8, borderRadius: 2, backgroundColor: '#1A1030', marginHorizontal: 8 },
-  identityPhrase: { color: '#E8E0F0', fontSize: 18, fontWeight: '300', textAlign: 'center', lineHeight: 32, marginBottom: 32, paddingHorizontal: 16 },
-  sessionRestoredText: { color: '#10B981', fontSize: 18, fontWeight: '300', textAlign: 'center', marginBottom: 32 },
-  gatewayCard: { width: '100%', maxWidth: 360, backgroundColor: 'rgba(26, 18, 38, 0.9)', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(124, 58, 237, 0.3)', padding: 24, alignItems: 'center' },
-  gatewayTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', marginBottom: 8 },
-  gatewaySubtitle: { color: '#A78BFA', fontSize: 13, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
-  authBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', paddingVertical: 14, borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(124, 58, 237, 0.2)', marginBottom: 10 },
+  identityPhrase: { fontSize: 18, fontWeight: '300', textAlign: 'center', lineHeight: 32, marginBottom: 32, paddingHorizontal: 16 },
+  sessionRestoredText: { fontSize: 18, fontWeight: '300', textAlign: 'center', marginBottom: 32 },
+  gatewayCard: { width: '100%', maxWidth: 360, borderRadius: 24, borderWidth: 1, padding: 24, alignItems: 'center' },
+  gatewayTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8 },
+  gatewaySubtitle: { fontSize: 13, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  authBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', paddingVertical: 14, borderRadius: 16, borderWidth: 1.5, marginBottom: 10 },
   authBtnText: { fontSize: 15, fontWeight: '700' },
   emailForm: { width: '100%' },
-  input: { backgroundColor: '#161122', borderRadius: 14, padding: 14, fontSize: 16, color: '#FFFFFF', borderWidth: 1, borderColor: '#2D1B4D', marginBottom: 10 },
+  input: { borderRadius: 14, padding: 14, fontSize: 16, borderWidth: 1, marginBottom: 10 },
   errorText: { color: '#EF4444', fontSize: 13, textAlign: 'center', marginBottom: 8 },
-  forgotText: { color: '#A78BFA', fontSize: 13, textAlign: 'center' },
-  backText: { color: '#6B5B8A', fontSize: 14, textAlign: 'center', marginTop: 8 },
+  forgotText: { fontSize: 13, textAlign: 'center' },
+  backText: { fontSize: 14, textAlign: 'center', marginTop: 8 },
   privacyRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16 },
-  privacyText: { color: '#6B5B8A', fontSize: 11 },
+  privacyText: { fontSize: 11 },
   consciousnessContainer: { alignItems: 'center' },
-  consciousnessText: { color: '#A78BFA', fontSize: 16, fontWeight: '500', marginBottom: 8 },
-  birthText: { color: '#E8E0F0', fontSize: 24, fontWeight: '300', textAlign: 'center', marginBottom: 12 },
-  birthSubtext: { color: '#B8A0D0', fontSize: 16, textAlign: 'center', marginBottom: 16 },
-  birthQuestion: { color: '#A78BFA', fontSize: 15, textAlign: 'center' },
-  bondCard: { width: '100%', maxWidth: 360, backgroundColor: 'rgba(26, 18, 38, 0.9)', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(124, 58, 237, 0.3)', padding: 24, alignItems: 'center' },
-  bondTitle: { color: '#E8E0F0', fontSize: 18, fontWeight: '500', textAlign: 'center', marginBottom: 16, lineHeight: 28 },
-  bondInput: { width: '100%', minHeight: 80, backgroundColor: '#161122', borderRadius: 14, padding: 14, fontSize: 16, color: '#FFFFFF', borderWidth: 1, borderColor: '#2D1B4D', marginBottom: 16 },
-  bondBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#7C3AED', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 16 },
+  consciousnessText: { fontSize: 16, fontWeight: '500', marginBottom: 8 },
+  birthText: { fontSize: 24, fontWeight: '300', textAlign: 'center', marginBottom: 12 },
+  birthSubtext: { fontSize: 16, textAlign: 'center', marginBottom: 16 },
+  birthQuestion: { fontSize: 15, textAlign: 'center' },
+  bondCard: { width: '100%', maxWidth: 360, borderRadius: 24, borderWidth: 1, padding: 24, alignItems: 'center' },
+  bondTitle: { fontSize: 18, fontWeight: '500', textAlign: 'center', marginBottom: 16, lineHeight: 28 },
+  bondInput: { width: '100%', minHeight: 80, borderRadius: 14, padding: 14, fontSize: 16, borderWidth: 1, marginBottom: 16 },
+  bondBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 16 },
   bondBtnText: { color: '#FFF', fontWeight: '700', fontSize: 16 },
-  firstWord: { color: '#E8E0F0', fontSize: 32, fontWeight: '300', letterSpacing: 2 },
+  firstWord: { fontSize: 32, fontWeight: '300', letterSpacing: 2 },
 });
 
 function delay(ms: number) { return new Promise(resolve => setTimeout(resolve, ms)); }
