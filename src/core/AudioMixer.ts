@@ -70,7 +70,21 @@ export class AudioMixer {
     currentChannel.volume = target;
   }
 
-  getChannelVolume(id: string): number {
+  
+  /**
+   * تشغيل تأثير صوتي لحظي (تفويض إلى audioEngine)
+   */
+  playEffect(effect: string): void {
+    const contextMap: Record<string, string> = {
+      celebration: 'celebration',
+      calm: 'silence',
+      thinking: 'thinking',
+      speaking: 'conversation',
+    };
+    this.setContext(contextMap[effect] || effect);
+  }
+
+getChannelVolume(id: string): number {
     return this.channels.get(id)?.volume ?? DEFAULT_MIX[id] ?? 0.05;
   }
 

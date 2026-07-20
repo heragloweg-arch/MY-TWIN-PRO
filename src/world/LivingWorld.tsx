@@ -73,10 +73,10 @@ export default function LivingWorld() {
   useEffect(() => {
     const unsubscribe = stateBus.on('presence:state_updated', (event: string, data: any) => {
       // ✅ ربط المؤثرات الصوتية بحالة الكيان الحي
-      if (data.emotion === 'joy') audioMixer.playEffect?.('celebration');
-      else if (data.emotion === 'sadness') audioMixer.playEffect?.('calm');
-      else if (data.isThinking) audioMixer.playEffect?.('thinking');
-      else if (data.isSpeaking) audioMixer.playEffect?.('speaking');
+      if (data.emotion === 'joy') audioMixer.setContext('celebration');
+      else if (data.emotion === 'sadness') audioMixer.setContext('silence');
+      else if (data.isThinking) audioMixer.setContext('thinking');
+      else if (data.isSpeaking) audioMixer.setContext('conversation');
       
       // ✅ تغيير الموسيقى الخلفية حسب الطاقة
       if (data.warmth > 0.8) audioMixer.setContext('celebration');

@@ -22,6 +22,16 @@ export interface ThemeColors {
   white: string;
   glass: string;
 }
+export const FONTS = {
+  arabicBold: 'Tajawal_700Bold',
+  arabicMedium: 'Tajawal_500Medium',
+  arabicRegular: 'Tajawal_400Regular',
+  ai: 'Orbitron_700Bold',
+  sizes: { title: 28, subtitle: 18, body: 16, small: 14, tiny: 12 },
+};
+
+export const SPACING = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
+
 
 export const DARK_THEME: ThemeColors = {
   bg: '#120B1E',
@@ -68,6 +78,17 @@ export const LIGHT_THEME: ThemeColors = {
   white: '#FFFFFF',
   glass: 'rgba(255, 255, 255, 0.7)',
 };
+
+
+export const FONTS = {
+  arabicBold: 'Tajawal_700Bold',
+  arabicMedium: 'Tajawal_500Medium',
+  arabicRegular: 'Tajawal_400Regular',
+  ai: 'Orbitron_700Bold',
+  sizes: { title: 28, subtitle: 18, body: 16, small: 14, tiny: 12 },
+};
+
+export const SPACING = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
 
 /**
  * هوك الألوان الرئيسي — يقرأ الوضع من المتجر
