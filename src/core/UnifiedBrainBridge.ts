@@ -1,4 +1,4 @@
-import { apiClient } from '../services/apiClient';
+import { apiPost, apiGet } from '../../lib/httpClient';
 
 export interface PerceptionData {
   typingSpeed: number;
@@ -39,10 +39,10 @@ class UnifiedBrainBridge {
   clearHistory(): void { this.history = []; }
 
   async process(message: string, perception: PerceptionData): Promise<UnifiedResponse> {
-    const response = await apiClient.post('/api/v2/chat', {
+    const response = await apiPost('/api/v2/chat', {
       user_id: this.userId, message, lang: this.lang, perception, history: this.history.slice(-10),
     });
-    const data: UnifiedResponse = response.data;
+    const data: UnifiedResponse = response;
     this.addToHistory('user', message);
     if (data.reply) this.addToHistory('assistant', data.reply);
     return data;
@@ -50,42 +50,42 @@ class UnifiedBrainBridge {
 
   async getCoreMemories(limit: number = 12): Promise<any[]> {
     try {
-      const response = await apiClient.get('/api/memories/core', { params: { user_id: this.userId, limit } });
-      return response.data?.memories || [];
+      const response = await apiGet(`/api/memories/core?user_id=${this.userId}&limit=${limit}`);
+      return response?.memories || [];
     } catch (e) { return []; }
   }
 
   async getCapabilityMemory(capabilityType: string, limit: number = 10): Promise<any[]> {
     try {
-      const response = await apiClient.get('/api/memories/capability', { params: { user_id: this.userId, capability: capabilityType, limit } });
-      return response.data?.memories || [];
+      const response = await apiGet(`/api/memories/capability?user_id=${this.userId}&capability=${capabilityType}&limit=${limit}`);
+      return response?.memories || [];
     } catch (e) { return []; }
   }
 
   async getOnThisDay(limit: number = 5): Promise<any[]> {
     try {
-      const response = await apiClient.get('/api/memories/on_this_day', { params: { user_id: this.userId, limit } });
-      return response.data?.memories || [];
+      const response = await apiGet(`/api/memories/on_this_day?user_id=${this.userId}&limit=${limit}`);
+      return response?.memories || [];
     } catch (e) { return []; }
   }
 
   async storeMemory(type: string, content: string, importance: number = 50, emotion: string = 'neutral', relatedTo: string[] = []): Promise<void> {
     try {
-      await apiClient.post('/api/memories/store', { user_id: this.userId, type, content, importance, emotion, related_to: relatedTo });
+      await apiPost('/api/memories/store', { user_id: this.userId, type, content, importance, emotion, related_to: relatedTo });
     } catch (e) {}
   }
 
   async getMemoryCount(): Promise<number> {
     try {
-      const response = await apiClient.get('/api/memories/count', { params: { user_id: this.userId } });
-      return response.data?.count || 0;
+      const response = await apiGet(`/api/memories/count?user_id=${this.userId}`);
+      return response?.count || 0;
     } catch (e) { return 0; }
   }
 
   async getMostUsedCapability(): Promise<string> {
     try {
-      const response = await apiClient.get('/api/memories/most_used_capability', { params: { user_id: this.userId } });
-      return response.data?.capability || '';
+      const response = await apiGet(`/api/memories/most_used_capability?user_id=${this.userId}`);
+      return response?.capability || '';
     } catch (e) { return ''; }
   }
 
@@ -98,15 +98,15 @@ class UnifiedBrainBridge {
 
   async getTwinState(): Promise<any> {
     try {
-      const response = await apiClient.get(`/api/twin/state/${this.userId}`);
-      return response.data || {};
+      const response = await apiGet(`/api/twin/state/${this.userId}`);
+      return response || {};
     } catch (e) { return {}; }
   }
 
   async getRecentEmotions(limit: number = 5): Promise<string[]> {
     try {
-      const response = await apiClient.get('/api/memories/recent_emotions', { params: { user_id: this.userId, limit } });
-      return response.data?.emotions || [];
+      const response = await apiGet(`/api/memories/recent_emotions?user_id=${this.userId}&limit=${limit}`);
+      return response?.emotions || [];
     } catch (e) { return []; }
   }
 }

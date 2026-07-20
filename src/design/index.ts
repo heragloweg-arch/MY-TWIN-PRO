@@ -1,13 +1,3 @@
-/**
- * DESIGN SYSTEM v2.0 — Unified Exports
- * ====================================
- * هذا هو الملف الوحيد الذي يستورد منه التطبيق.
- *
- * الاستخدام:
- *   import { COLORS, MOTION, SPACE, TYPO, GLASS, AUDIO } from 'src/design';
- */
-
-// ── Colors (Primary Source: engine/colors) ──────────
 export {
   DARK_THEME,
   LIGHT_THEME,
@@ -17,7 +7,6 @@ export {
 } from '../../engine/colors';
 export type { ThemeColors } from '../../engine/colors';
 
-// ── Living Theme (engine/living-theme) ──────────────
 export { useLivingTheme } from '../../engine/living-theme';
 export type {
   LivingTheme,
@@ -27,8 +16,6 @@ export type {
   LivingColors,
 } from '../../engine/living-theme';
 
-// ── Design Tokens ───────────────────────────────────
-export { FONTS, SPACING } from './tokens/colors';
 export { getBondColor, getEnergyColor, getEmotionColor } from './tokens/colors';
 
 export { MOTION, SPRING, DURATION } from './tokens/motion';

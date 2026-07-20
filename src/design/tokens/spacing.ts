@@ -1,24 +1,13 @@
-/**
- * SPACING TOKENS v1.0 — مرجع المسافات الموحد
- * ==============================================
- * يعيد تصدير SPACING من engine/colors.ts
- * ويضيف spacing tokens مسماة للاستخدام المباشر.
- *
- * الاستخدام:
- *   import { SPACE } from 'src/design/tokens/spacing';
- *   <View style={{ padding: SPACE.lg }} />
- */
-
 import { SPACING } from '../../../engine/colors';
 
 export { SPACING };
 
 export const SPACE = {
-  xs: SPACING.xs,   // 4
-  sm: SPACING.sm,   // 8
-  md: SPACING.md,   // 16
-  lg: SPACING.lg,   // 24
-  xl: SPACING.xl,   // 32
+  xs: SPACING.xs,
+  sm: SPACING.sm,
+  md: SPACING.md,
+  lg: SPACING.lg,
+  xl: SPACING.xl,
   section: 48,
   screen: 64,
 } as const;

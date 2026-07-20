@@ -1,5 +1,5 @@
 /**
- * API CLIENT v1.0 — عميل API موحد
+ * API CLIENT v2.0 — عميل API موحد
  * ==================================
  * يغلف lib/httpClient.ts الموجود.
  * يوفر واجهة موحدة لجميع استدعاءات Backend.
@@ -8,6 +8,17 @@
  */
 
 import { apiPost, apiGet, apiDelete, apiPut, apiStream } from '../../lib/httpClient';
+
+// ═══════════════════════════════════════════
+// كائن apiClient الموحد (يُستخدم من UnifiedBrainBridge)
+// ═══════════════════════════════════════════
+export const apiClient = {
+  post: apiPost,
+  get: apiGet,
+  delete: apiDelete,
+  put: apiPut,
+  stream: apiStream,
+};
 
 // ═══════════════════════════════════════════
 // Chat

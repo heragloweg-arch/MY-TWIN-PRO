@@ -27,6 +27,7 @@ from app.twin_state.personality_engine import (
 from app.twin_brain.identity_service import get_identity_context
 from app.twin_brain.response_builder import build_response
 from app.soul import get_soul_state, evolve_soul
+from app.soul.soul_bonds import soul_bonds
 from app.twin_state.unified_evolution import unified_evolution_engine
 
 from app.twin_state.relationship_service import load as load_relationship
@@ -240,6 +241,16 @@ class UnifiedTwinBrain:
         )
         
         # ═══════════════════════════════
+        
+        # تحديث SoulBonds (للربط بين المستخدمين)
+        try:
+            active_bonds = await soul_bonds.get_bonds(user_id)
+            if active_bonds:
+                for bond in active_bonds:
+                    await soul_bonds.strengthen_bond(user_id, bond.get("partner_id", ""))
+        except Exception:
+            pass
+    
         # 13.6 التطور طويل المدى
         # ═══════════════════════════════
         evolution_updates = await unified_evolution_engine.record_interaction(user_id, real_emotion, evolved_dna)
