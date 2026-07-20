@@ -1,48 +1,40 @@
 /**
- * DESIGN SYSTEM v1.0 — المرجع الموحد للتصميم
- * =============================================
+ * DESIGN SYSTEM v2.0 — Unified Exports
+ * ====================================
  * هذا هو الملف الوحيد الذي يستورد منه التطبيق.
  *
  * الاستخدام:
  *   import { COLORS, MOTION, SPACE, TYPO, GLASS, AUDIO } from 'src/design';
  */
 
-// ── Colors ──────────────────────────────────────────
+// ── Colors (Primary Source: engine/colors) ──────────
 export {
   DARK_THEME,
   LIGHT_THEME,
-  FONTS,
-  SPACING,
   useColors,
-  getColors,
   useAppTheme,
-  getBondColor,
-  getEnergyColor,
-  getEmotionColor,
-  useLivingTheme,
-} from './tokens/colors';
+  syncInitialTheme,
+} from '../../engine/colors';
+export type { ThemeColors } from '../../engine/colors';
+
+// ── Living Theme (engine/living-theme) ──────────────
+export { useLivingTheme } from '../../engine/living-theme';
 export type {
-  ThemeColors,
   LivingTheme,
   MotionConfig,
   GlassConfig,
   GlowConfig,
   LivingColors,
-} from './tokens/colors';
+} from '../../engine/living-theme';
 
-// ── Motion ──────────────────────────────────────────
+// ── Design Tokens ───────────────────────────────────
+export { FONTS, SPACING } from './tokens/colors';
+export { getBondColor, getEnergyColor, getEmotionColor } from './tokens/colors';
+
 export { MOTION, SPRING, DURATION } from './tokens/motion';
-
-// ── Spacing ─────────────────────────────────────────
 export { SPACE, RADIUS, HIT_SLOP } from './tokens/spacing';
-
-// ── Typography ──────────────────────────────────────
 export { TYPO } from './tokens/typography';
-
-// ── Glass ───────────────────────────────────────────
 export { GLASS } from './tokens/glass';
-
-// ── Audio ───────────────────────────────────────────
 export {
   AUDIO_CATEGORY,
   AUDIO_GROUPS,

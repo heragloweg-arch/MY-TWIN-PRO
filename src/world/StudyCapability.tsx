@@ -18,10 +18,7 @@ interface StudyTopic {
 }
 
 export default function StudyCapability() {
-  const { colors } = useAppTheme();
-  const { colors } = useAppTheme();
   const rtl = useRTL();
-  const { colors } = useAppTheme();
   const { colors } = useAppTheme();
   const [active, setActive] = useState(false);
   const [currentTopic, setCurrentTopic] = useState('');
@@ -44,8 +41,14 @@ export default function StudyCapability() {
     try {
       const saved = await unifiedBrainBridge.getCapabilityMemory('study', 5);
       if (saved.length > 0) {
-        setTopics(saved.map(m => ({ id: m.id, title: m.content?.substring(0, 80) || '', progress: m.importance || 50, lastStudied: m.created_at || m.timestamp })));
-        setLastTopic(saved[0].content?.substring(0, 80) || '');
+        const mapped: StudyTopic[] = saved.map((m: any) => ({
+          id: m.id,
+          title: (m.expressed_text || m.content || '').substring(0, 80),
+          progress: m.importance || 50,
+          lastStudied: m.created_at || m.timestamp || new Date().toISOString(),
+        }));
+        setTopics(mapped);
+        setLastTopic(mapped[0].title);
       }
     } catch (e) {}
   };
@@ -58,9 +61,7 @@ export default function StudyCapability() {
       await unifiedBrainBridge.storeMemory('learning', currentTopic.trim(), 60, 'focused', ['study']);
     } catch (e) {}
     setCurrentTopic('');
-    
     economyEngine.rewardStudySession();
-    
     EventBus.emit('STUDY_TOPIC_ADDED', { topic: newTopic });
   };
 
@@ -89,34 +90,41 @@ export default function StudyCapability() {
     <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={[styles.iconWrapLarge, { backgroundColor: '#3B82F620' }]}>
+          <View style={[styles.iconWrapLarge, { backgroundColor: colors.accent + '20' }]}>
             <BookOpen size={24} stroke={colors.accent} />
           </View>
           <View>
-            <Text style={styles.headerTitle}>Study World</Text>
-            <Text style={styles.headerSubtitle}>{rtl.isRTL ? 'عالم الدراسة' : 'Study World'}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Study World</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{rtl.isRTL ? 'عالم الدراسة' : 'Study World'}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.closeBtn} onPress={handleDeactivate}>
-          <Text style={styles.closeText}>✕</Text>
+          <Text style={[styles.closeText, { color: colors.textSecondary }]}>✕</Text>
         </TouchableOpacity>
       </View>
 
       {lastTopic && (
-        <View style={styles.lastTopicCard}>
+        <View style={[styles.lastTopicCard, { backgroundColor: colors.accent + '10' }]}>
           <Brain size={16} stroke={colors.accent} />
-          <Text style={styles.lastTopicText}>{rtl.isRTL ? 'آخر مرة:' : 'Last time:'} {lastTopic}</Text>
+          <Text style={[styles.lastTopicText, { color: colors.accent }]}>{rtl.isRTL ? 'آخر مرة:' : 'Last time:'} {lastTopic}</Text>
         </View>
       )}
 
-      <View style={styles.toolCard}>
+      <View style={[styles.toolCard, { backgroundColor: colors.card, borderColor: colors.accent + '30' }]}>
         <View style={styles.toolHeader}>
           <Target size={16} stroke={colors.accent} />
-          <Text style={styles.toolLabel}>{rtl.isRTL ? 'ماذا تريد أن تدرس؟' : 'What do you want to study?'}</Text>
+          <Text style={[styles.toolLabel, { color: colors.textSecondary }]}>{rtl.isRTL ? 'ماذا تريد أن تدرس؟' : 'What do you want to study?'}</Text>
         </View>
         <View style={styles.addRow}>
-          <TextInput style={[styles.addInput, { textAlign: rtl.textAlign }]} value={currentTopic} onChangeText={setCurrentTopic} placeholder={rtl.isRTL ? 'مثلاً: فيزياء الكم' : 'e.g., Quantum Physics'} placeholderTextColor={colors.textSecondary} onSubmitEditing={addTopic} />
-          <TouchableOpacity style={styles.addBtn} onPress={addTopic}>
+          <TextInput
+            style={[styles.addInput, { textAlign: rtl.textAlign, backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
+            value={currentTopic}
+            onChangeText={setCurrentTopic}
+            placeholder={rtl.isRTL ? 'مثلاً: فيزياء الكم' : 'e.g., Quantum Physics'}
+            placeholderTextColor={colors.textSecondary}
+            onSubmitEditing={addTopic}
+          />
+          <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.accent }]} onPress={addTopic}>
             <ChevronRight size={18} stroke="#FFF" />
           </TouchableOpacity>
         </View>
@@ -125,12 +133,14 @@ export default function StudyCapability() {
       {topics.length > 0 && (
         <View style={styles.topicsList}>
           {topics.map(topic => (
-            <View key={topic.id} style={styles.topicItem}>
+            <View key={topic.id} style={[styles.topicItem, { backgroundColor: colors.card }]}>
               <View style={styles.topicInfo}>
                 <Clock size={14} stroke={colors.textSecondary} />
-                <Text style={styles.topicTitle}>{topic.title}</Text>
+                <Text style={[styles.topicTitle, { color: colors.text }]}>{topic.title}</Text>
               </View>
-              <View style={styles.progressTrack}><View style={[styles.progressFill, { width: `${topic.progress}%` }]} /></View>
+              <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+                <View style={[styles.progressFill, { width: `${topic.progress}%`, backgroundColor: colors.accent }]} />
+              </View>
             </View>
           ))}
         </View>
@@ -144,22 +154,22 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACE.md },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   iconWrapLarge: { width: 48, height: 48, borderRadius: RADIUS.sm, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  headerSubtitle: { color: colors.textSecondary, fontSize: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerSubtitle: { fontSize: 12 },
   closeBtn: { padding: 8, borderRadius: RADIUS.sm, backgroundColor: 'rgba(255,255,255,0.05)' },
-  closeText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
-  lastTopicCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: 'rgba(59,130,246,0.08)', borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
-  lastTopicText: { color: colors.accent, fontSize: 13, flex: 1 },
-  toolCard: { backgroundColor: colors.card, borderRadius: RADIUS.card, borderWidth: 1, borderColor: colors.border, padding: SPACE.md },
+  closeText: { fontSize: 16, fontWeight: '700' },
+  lastTopicCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
+  lastTopicText: { fontSize: 13, flex: 1 },
+  toolCard: { borderRadius: RADIUS.card, borderWidth: 1, padding: SPACE.md },
   toolHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.sm },
-  toolLabel: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  toolLabel: { fontSize: 13, fontWeight: '600' },
   addRow: { flexDirection: 'row', gap: SPACE.sm },
-  addInput: { flex: 1, backgroundColor: colors.inputBg, borderRadius: RADIUS.sm, padding: 12, fontSize: 15, color: colors.text, borderWidth: 1, borderColor: colors.border },
-  addBtn: { width: 44, height: 44, borderRadius: RADIUS.sm, backgroundColor: colors.accent, justifyContent: 'center', alignItems: 'center' },
+  addInput: { flex: 1, borderRadius: RADIUS.sm, padding: 12, fontSize: 15, borderWidth: 1 },
+  addBtn: { width: 44, height: 44, borderRadius: RADIUS.sm, justifyContent: 'center', alignItems: 'center' },
   topicsList: { gap: SPACE.sm, marginTop: SPACE.md },
-  topicItem: { backgroundColor: 'rgba(26,18,38,0.8)', borderRadius: RADIUS.sm, padding: SPACE.md },
+  topicItem: { borderRadius: RADIUS.sm, padding: SPACE.md },
   topicInfo: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, marginBottom: 8 },
-  topicTitle: { color: colors.text, fontSize: 14, fontWeight: '500' },
-  progressTrack: { height: 3, backgroundColor: colors.border, borderRadius: 2 },
-  progressFill: { height: 3, backgroundColor: colors.accent, borderRadius: 2 },
+  topicTitle: { fontSize: 14, fontWeight: '500' },
+  progressTrack: { height: 3, borderRadius: 2 },
+  progressFill: { height: 3, borderRadius: 2 },
 });

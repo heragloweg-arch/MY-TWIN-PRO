@@ -5,7 +5,6 @@ import { unifiedBrainBridge } from '../core/UnifiedBrainBridge';
 import { stateBus } from '../core/StateBus';
 import { useRTL } from '../../lib/useRTL';
 import { useAppTheme } from '../../engine/colors';
-import { useAppTheme } from '../../engine/colors';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
 import { Clock, MessageCircle, Heart, Target } from 'lucide-react-native';
 
@@ -19,11 +18,7 @@ interface TimelineEntry {
 }
 
 export default function DailyTimeline() {
-  const { colors } = useAppTheme();
-  const { colors } = useAppTheme();
-  const { colors } = useAppTheme();
   const rtl = useRTL();
-  const { colors } = useAppTheme();
   const { colors } = useAppTheme();
   const [entries, setEntries] = useState<TimelineEntry[]>([]);
   const [visible, setVisible] = useState(false);
@@ -40,7 +35,7 @@ export default function DailyTimeline() {
           id: memory.id,
           type: 'memory',
           text: (memory.expressed_text || memory.content || '').substring(0, 80),
-          time: new Date(memory.created_at || memory.timestamp).toLocaleTimeString(rtl.isRTL ? 'ar' : 'en', { hour: '2-digit', minute: '2-digit' }),
+          time: new Date(memory.created_at || memory.timestamp || Date.now()).toLocaleTimeString(rtl.isRTL ? 'ar' : 'en', { hour: '2-digit', minute: '2-digit' }),
           color: '#8B5CF6',
           icon: Heart,
         });
@@ -54,13 +49,13 @@ export default function DailyTimeline() {
           id: last.id,
           type: 'conversation',
           text: (last.expressed_text || last.content || '').substring(0, 80),
-          time: new Date(last.created_at || last.timestamp).toLocaleTimeString(rtl.isRTL ? 'ar' : 'en', { hour: '2-digit', minute: '2-digit' }),
+          time: new Date(last.created_at || last.timestamp || Date.now()).toLocaleTimeString(rtl.isRTL ? 'ar' : 'en', { hour: '2-digit', minute: '2-digit' }),
           color: colors.accent,
           icon: MessageCircle,
         });
       }
 
-      // 3. حالة العلاقة — من StateBus
+      // 3. حالة العلاقة من StateBus
       const bond = stateBus.getState().relationship.bondLevel;
       if (bond > 30) {
         const phase = bond >= 95 ? 'soulmate' : bond >= 80 ? 'close_friend' : bond >= 40 ? 'friend' : 'familiar';
@@ -81,7 +76,7 @@ export default function DailyTimeline() {
       setEntries(timeline);
       setVisible(true);
     }
-  }, [rtl.isRTL]);
+  }, [rtl.isRTL, colors]);
 
   useEffect(() => {
     const timer = setTimeout(buildTimeline, 5000);
@@ -93,18 +88,18 @@ export default function DailyTimeline() {
 
   return (
     <Animated.View entering={FadeIn.duration(500)} exiting={FadeOut.duration(300)} style={styles.container}>
-      <Text style={styles.title}>{rtl.isRTL ? 'ملخص اليوم' : 'Daily Summary'}</Text>
+      <Text style={[styles.title, { color: colors.textSecondary }]}>{rtl.isRTL ? 'ملخص اليوم' : 'Daily Summary'}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {entries.map(entry => {
           const Icon = entry.icon;
           return (
-            <View key={entry.id} style={[styles.entry, { borderColor: entry.color + '30' }]}>
+            <View key={entry.id} style={[styles.entry, { backgroundColor: colors.card, borderColor: entry.color + '30' }]}>
               <View style={[styles.entryIcon, { backgroundColor: entry.color + '15' }]}>
                 <Icon size={14} stroke={entry.color} />
               </View>
-              <Text style={styles.entryText} numberOfLines={2}>{entry.text}</Text>
+              <Text style={[styles.entryText, { color: colors.text }]} numberOfLines={2}>{entry.text}</Text>
               {entry.time !== '' && (
-                <Text style={styles.entryTime}>{entry.time}</Text>
+                <Text style={[styles.entryTime, { color: colors.textSecondary }]}>{entry.time}</Text>
               )}
             </View>
           );
@@ -116,17 +111,10 @@ export default function DailyTimeline() {
 
 const styles = StyleSheet.create({
   container: { paddingHorizontal: SPACE.lg, paddingVertical: SPACE.sm },
-  title: { color: colors.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: SPACE.sm },
+  title: { fontSize: 13, fontWeight: '600', marginBottom: SPACE.sm },
   scroll: { gap: SPACE.sm },
-  entry: {
-    width: 160,
-    backgroundColor: colors.card,
-    borderRadius: RADIUS.card,
-    borderWidth: 1,
-    padding: SPACE.sm,
-    gap: 6,
-  },
+  entry: { width: 160, borderRadius: RADIUS.card, borderWidth: 1, padding: SPACE.sm, gap: 6 },
   entryIcon: { width: 28, height: 28, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  entryText: { color: colors.text, fontSize: 12, lineHeight: 16 },
-  entryTime: { color: colors.textSecondary, fontSize: 10 },
+  entryText: { fontSize: 12, lineHeight: 16 },
+  entryTime: { fontSize: 10 },
 });

@@ -17,6 +17,10 @@ export interface UnifiedResponse {
   twin_state_update: any;
   timing: any;
   latency_ms: number;
+  consciousness_trace?: any[];
+  trust_model?: any;
+  soul_state?: any;
+  evolution_updates?: any;
 }
 
 class UnifiedBrainBridge {
@@ -88,7 +92,7 @@ class UnifiedBrainBridge {
   async getMostVisitedWorld(): Promise<string> {
     try {
       const worlds = await this.getCapabilityMemory('world', 1);
-      return worlds.length > 0 ? worlds[0].content || '' : '';
+      return worlds.length > 0 ? (worlds[0].content || worlds[0].expressed_text || '') : '';
     } catch (e) { return ''; }
   }
 
