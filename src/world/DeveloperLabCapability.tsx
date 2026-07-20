@@ -21,25 +21,22 @@ interface CodeSession {
 
 const TYPE_CONFIG: Record<string, { icon: typeof Code; color: string; label_ar: string; label_en: string }> = {
   idea:       { icon: Rocket,    color: '#00BCD4', label_ar: 'فكرة',       label_en: 'Idea' },
-  code_review:{ icon: Code,      color: colors.accent, label_ar: 'مراجعة كود', label_en: 'Code Review' },
-  project:    { icon: GitBranch, color: colors.success, label_ar: 'مشروع',      label_en: 'Project' },
-  debug:      { icon: Bug,       color: colors.gold, label_ar: 'تصحيح',      label_en: 'Debug' },
-  devops:     { icon: Terminal,  color: colors.accent, label_ar: 'DevOps',     label_en: 'DevOps' },
+  code_review:{ icon: Code,      color: '#3B82F6', label_ar: 'مراجعة كود', label_en: 'Code Review' },
+  project:    { icon: GitBranch, color: '#10B981', label_ar: 'مشروع',      label_en: 'Project' },
+  debug:      { icon: Bug,       color: '#F59E0B', label_ar: 'تصحيح',      label_en: 'Debug' },
+  devops:     { icon: Terminal,  color: '#8B5CF6', label_ar: 'DevOps',     label_en: 'DevOps' },
 };
 
-const QUICK_ACTIONS: Array<{ type: CodeSession['type']; label_ar: string; label_en: string; placeholder_ar: string; placeholder_en: string }> = [
-  { type: 'idea',       label_ar: 'حلل فكرة',       label_en: 'Analyze Idea',       placeholder_ar: 'صف فكرتك...',           placeholder_en: 'Describe your idea...' },
-  { type: 'code_review',label_ar: 'راجع كود',       label_en: 'Review Code',        placeholder_ar: 'الصق الكود هنا...',      placeholder_en: 'Paste your code here...' },
-  { type: 'project',    label_ar: 'ابدأ مشروع',     label_en: 'Start Project',      placeholder_ar: 'صف مشروعك...',           placeholder_en: 'Describe your project...' },
-  { type: 'debug',      label_ar: 'صحح خطأ',        label_en: 'Debug',              placeholder_ar: 'ما المشكلة؟',            placeholder_en: 'What\'s the issue?' },
-  { type: 'devops',     label_ar: 'توليد DevOps',   label_en: 'Generate DevOps',    placeholder_ar: 'ما البنية التحتية؟',     placeholder_en: 'What infrastructure?' },
+const QUICK_ACTIONS: Array<{ type: CodeSession['type']; label_ar: string; label_en: string }> = [
+  { type: 'idea',        label_ar: 'حلل فكرة',       label_en: 'Analyze Idea' },
+  { type: 'code_review', label_ar: 'راجع كود',       label_en: 'Review Code' },
+  { type: 'project',     label_ar: 'ابدأ مشروع',     label_en: 'Start Project' },
+  { type: 'debug',       label_ar: 'صحح خطأ',        label_en: 'Debug' },
+  { type: 'devops',      label_ar: 'توليد DevOps',   label_en: 'Generate DevOps' },
 ];
 
 export default function DeveloperLabCapability() {
-  const { colors } = useAppTheme();
-  const { colors } = useAppTheme();
   const rtl = useRTL();
-  const { colors } = useAppTheme();
   const { colors } = useAppTheme();
   const [active, setActive] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -52,10 +49,7 @@ export default function DeveloperLabCapability() {
 
   useEffect(() => {
     const unsub1 = EventBus.on('CAPABILITY_ACTIVATED', (payload: any) => {
-      if (payload?.capability === 'code_lab') {
-        setActive(true);
-        loadCodeContext();
-      }
+      if (payload?.capability === 'code_lab') { setActive(true); loadCodeContext(); }
     });
     const unsub2 = EventBus.on('CAPABILITY_DEACTIVATED', () => setActive(false));
     const unsub3 = EventBus.on('WORKSPACE_CHANGE_REQUESTED', (payload: any) => {
@@ -69,8 +63,14 @@ export default function DeveloperLabCapability() {
     try {
       const saved = await unifiedBrainBridge.getCapabilityMemory('code', 5);
       if (saved.length > 0) {
-        setSessions(saved.map(m => ({ id: m.id, title: m.content?.substring(0, 60) || '', type: (m.relatedTo?.find(r => Object.keys(TYPE_CONFIG).includes(r)) || 'idea') as CodeSession['type'], content: m.content, timestamp: m.created_at || m.timestamp })));
-        setLastSession(saved[0].content?.substring(0, 60) || '');
+        setSessions(saved.map((m: any) => ({
+          id: m.id,
+          title: (m.expressed_text || m.content || '').substring(0, 60),
+          type: (Object.keys(TYPE_CONFIG).find(k => (m.expressed_text || m.content || '').toLowerCase().includes(k)) || 'idea') as CodeSession['type'],
+          content: m.expressed_text || m.content,
+          timestamp: m.created_at || m.timestamp,
+        })));
+        setLastSession((saved[0].expressed_text || saved[0].content || '').substring(0, 60));
       }
     } catch (e) {}
   };
@@ -132,34 +132,34 @@ export default function DeveloperLabCapability() {
             <Terminal size={24} stroke="#00BCD4" />
           </View>
           <View>
-            <Text style={styles.headerTitle}>Developer Lab</Text>
-            <Text style={styles.headerSubtitle}>{rtl.isRTL ? 'معمل المطور' : 'Developer Lab'}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Developer Lab</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{rtl.isRTL ? 'معمل المطور' : 'Developer Lab'}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.closeBtn} onPress={handleDeactivate}>
-          <Text style={styles.closeText}>✕</Text>
+          <Text style={[styles.closeText, { color: colors.textSecondary }]}>✕</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {lastSession && (
-          <View style={styles.lastSessionCard}>
+          <View style={[styles.lastSessionCard, { backgroundColor: '#00BCD4' + '10' }]}>
             <Brain size={16} stroke="#00BCD4" />
-            <Text style={styles.lastSessionText}>{rtl.isRTL ? 'آخر جلسة:' : 'Last session:'} {lastSession}</Text>
+            <Text style={[styles.lastSessionText, { color: '#00BCD4' }]}>{rtl.isRTL ? 'آخر جلسة:' : 'Last session:'} {lastSession}</Text>
           </View>
         )}
 
-        <View style={styles.canvasCard}>
+        <View style={[styles.canvasCard, { backgroundColor: colors.card, borderColor: '#00BCD4' + '40' }]}>
           <View style={styles.canvasHeader}>
             <Code size={16} stroke="#00BCD4" />
-            <Text style={styles.canvasLabel}>{rtl.isRTL ? 'ماذا تريد أن تبني؟' : 'What do you want to build?'}</Text>
+            <Text style={[styles.canvasLabel, { color: '#00BCD4' }]}>{rtl.isRTL ? 'ماذا تريد أن تبني؟' : 'What do you want to build?'}</Text>
           </View>
           <TextInput
-            style={[styles.canvasInput, { textAlign: rtl.textAlign }]}
+            style={[styles.canvasInput, { textAlign: rtl.textAlign, backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
             value={inputText}
             onChangeText={setInputText}
             placeholder={rtl.isRTL ? 'اكتب كودك، فكرتك، أو مشكلتك...' : 'Write your code, idea, or problem...'}
-            placeholderTextColor="#4A5568"
+            placeholderTextColor={colors.textSecondary}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
@@ -186,32 +186,32 @@ export default function DeveloperLabCapability() {
           </View>
 
           {isProcessing && (
-            <Text style={styles.processingText}>{rtl.isRTL ? 'جاري المعالجة...' : 'Processing...'}</Text>
+            <Text style={[styles.processingText, { color: colors.gold }]}>{rtl.isRTL ? 'جاري المعالجة...' : 'Processing...'}</Text>
           )}
 
           {lastResponse !== '' && (
-            <View style={styles.responseCard}>
-              <Text style={styles.responseText} numberOfLines={8}>{lastResponse}</Text>
+            <View style={[styles.responseCard, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+              <Text style={[styles.responseText, { color: colors.text }]} numberOfLines={8}>{lastResponse}</Text>
             </View>
           )}
         </View>
 
         {sessions.length > 0 && (
           <View style={styles.sessionsSection}>
-            <Text style={styles.sectionTitle}>{rtl.isRTL ? 'الجلسات السابقة' : 'Previous Sessions'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{rtl.isRTL ? 'الجلسات السابقة' : 'Previous Sessions'}</Text>
             {sessions.map(session => {
               const config = TYPE_CONFIG[session.type] || TYPE_CONFIG.idea;
               const Icon = config.icon;
               return (
-                <View key={session.id} style={styles.sessionItem}>
+                <View key={session.id} style={[styles.sessionItem, { backgroundColor: colors.card }]}>
                   <View style={[styles.sessionIcon, { backgroundColor: config.color + '20' }]}>
                     <Icon size={14} stroke={config.color} />
                   </View>
                   <View style={styles.sessionInfo}>
-                    <Text style={styles.sessionTitle} numberOfLines={1}>{session.title}</Text>
+                    <Text style={[styles.sessionTitle, { color: colors.text }]} numberOfLines={1}>{session.title}</Text>
                     <View style={styles.sessionMeta}>
-                      <Clock size={10} stroke=colors.textSecondary />
-                      <Text style={styles.sessionTime}>{new Date(session.timestamp).toLocaleDateString(rtl.isRTL ? 'ar' : 'en')}</Text>
+                      <Clock size={10} stroke={colors.textSecondary} />
+                      <Text style={[styles.sessionTime, { color: colors.textSecondary }]}>{new Date(session.timestamp).toLocaleDateString(rtl.isRTL ? 'ar' : 'en')}</Text>
                     </View>
                   </View>
                 </View>
@@ -221,13 +221,13 @@ export default function DeveloperLabCapability() {
         )}
 
         {relevantMemories.length > 0 && (
-          <View style={styles.memoriesCard}>
+          <View style={[styles.memoriesCard, { backgroundColor: colors.accent + '10', borderColor: colors.accent + '30' }]}>
             <View style={styles.memoriesHeader}>
-              <Brain size={16} stroke="#8B5CF6" />
-              <Text style={styles.memoriesTitle}>{rtl.isRTL ? 'تذكرت...' : 'I remember...'}</Text>
+              <Brain size={16} stroke={colors.accent} />
+              <Text style={[styles.memoriesTitle, { color: colors.accent }]}>{rtl.isRTL ? 'تذكرت...' : 'I remember...'}</Text>
             </View>
             {relevantMemories.map(memory => (
-              <Text key={memory.id} style={styles.memoryText} numberOfLines={2}>{memory.content}</Text>
+              <Text key={memory.id} style={[styles.memoryText, { color: colors.textSecondary }]} numberOfLines={2}>{memory.content}</Text>
             ))}
           </View>
         )}
@@ -242,32 +242,32 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACE.md },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   iconWrapLarge: { width: 48, height: 48, borderRadius: RADIUS.sm, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  headerSubtitle: { color: colors.textSecondary, fontSize: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerSubtitle: { fontSize: 12 },
   closeBtn: { padding: 8, borderRadius: RADIUS.sm, backgroundColor: 'rgba(255,255,255,0.05)' },
-  closeText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
-  lastSessionCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: 'rgba(0,188,212,0.08)', borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
-  lastSessionText: { color: '#00BCD4', fontSize: 13, flex: 1 },
-  canvasCard: { backgroundColor: colors.card, borderRadius: RADIUS.card, borderWidth: 1, borderColor: 'rgba(0, 188, 212, 0.25)', padding: SPACE.md },
+  closeText: { fontSize: 16, fontWeight: '700' },
+  lastSessionCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
+  lastSessionText: { fontSize: 13, flex: 1 },
+  canvasCard: { borderRadius: RADIUS.card, borderWidth: 1, padding: SPACE.md },
   canvasHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.sm },
-  canvasLabel: { color: '#00BCD4', fontSize: 14, fontWeight: '600' },
-  canvasInput: { backgroundColor: colors.inputBg, borderRadius: RADIUS.sm, padding: 14, fontSize: 15, color: colors.text, borderWidth: 1, borderColor: colors.border, minHeight: 100, fontFamily: 'monospace' },
+  canvasLabel: { fontSize: 14, fontWeight: '600' },
+  canvasInput: { borderRadius: RADIUS.sm, padding: 14, fontSize: 15, borderWidth: 1, minHeight: 100 },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm, marginTop: SPACE.md },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: RADIUS.sm, borderWidth: 1.5 },
   actionLabel: { fontSize: 13, fontWeight: '600' },
-  processingText: { color: colors.gold, fontSize: 13, marginTop: SPACE.sm, fontStyle: 'italic' },
-  responseCard: { backgroundColor: colors.inputBg, borderRadius: RADIUS.sm, padding: SPACE.md, marginTop: SPACE.md, borderWidth: 1, borderColor: colors.border },
-  responseText: { color: colors.text, fontSize: 14, lineHeight: 22, fontFamily: 'monospace' },
+  processingText: { fontSize: 13, marginTop: SPACE.sm, fontStyle: 'italic' },
+  responseCard: { borderRadius: RADIUS.sm, padding: SPACE.md, marginTop: SPACE.md, borderWidth: 1 },
+  responseText: { fontSize: 14, lineHeight: 22 },
   sessionsSection: { marginTop: SPACE.md },
-  sectionTitle: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', marginBottom: SPACE.sm },
-  sessionItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: colors.card, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: 6 },
+  sectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: SPACE.sm },
+  sessionItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: 6 },
   sessionIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   sessionInfo: { flex: 1 },
-  sessionTitle: { color: colors.text, fontSize: 13, fontWeight: '500' },
+  sessionTitle: { fontSize: 13, fontWeight: '500' },
   sessionMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  sessionTime: { color: colors.textSecondary, fontSize: 10 },
-  memoriesCard: { backgroundColor: 'rgba(139, 92, 246, 0.06)', borderRadius: RADIUS.card, borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.2)', padding: SPACE.md, marginTop: SPACE.md },
+  sessionTime: { fontSize: 10 },
+  memoriesCard: { borderRadius: RADIUS.card, borderWidth: 1, padding: SPACE.md, marginTop: SPACE.md },
   memoriesHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.sm },
-  memoriesTitle: { color: colors.accent, fontSize: 13, fontWeight: '600' },
-  memoryText: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  memoriesTitle: { fontSize: 13, fontWeight: '600' },
+  memoryText: { fontSize: 12, lineHeight: 18, marginTop: 4 },
 });

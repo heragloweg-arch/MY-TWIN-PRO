@@ -20,17 +20,14 @@ interface ImageSession {
 }
 
 const IMAGE_ACTIONS = [
-  { type: 'generate', icon: Wand2, color: colors.rose, label_ar: 'توليد صورة', label_en: 'Generate Image', placeholder_ar: 'صف الصورة التي تريدها...', placeholder_en: 'Describe the image you want...' },
-  { type: 'enhance_prompt', icon: Palette, color: colors.accent, label_ar: 'تحسين الوصف', label_en: 'Enhance Prompt', placeholder_ar: 'ما موضوع الصورة؟', placeholder_en: 'What is the image topic?' },
-  { type: 'analyze', icon: Search, color: colors.accent, label_ar: 'تحليل صورة', label_en: 'Analyze Image', placeholder_ar: 'الصق الصورة أو وصفها...', placeholder_en: 'Paste the image or describe it...' },
-  { type: 'edit', icon: Camera, color: colors.gold, label_ar: 'تعديل صورة', label_en: 'Edit Image', placeholder_ar: 'ما التعديل المطلوب؟', placeholder_en: 'What edit do you want?' },
+  { type: 'generate', icon: Wand2, color: '#EC4899', label_ar: 'توليد صورة', label_en: 'Generate Image' },
+  { type: 'enhance_prompt', icon: Palette, color: '#A855F7', label_ar: 'تحسين الوصف', label_en: 'Enhance Prompt' },
+  { type: 'analyze', icon: Search, color: '#3B82F6', label_ar: 'تحليل صورة', label_en: 'Analyze Image' },
+  { type: 'edit', icon: Camera, color: '#F59E0B', label_ar: 'تعديل صورة', label_en: 'Edit Image' },
 ];
 
 export default function AIImageCapability() {
-  const { colors } = useAppTheme();
-  const { colors } = useAppTheme();
   const rtl = useRTL();
-  const { colors } = useAppTheme();
   const { colors } = useAppTheme();
   const [active, setActive] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -51,8 +48,8 @@ export default function AIImageCapability() {
     try {
       const saved = await unifiedBrainBridge.getCapabilityMemory('ai_image', 5);
       if (saved.length > 0) {
-        setSessions(saved.map(m => ({ id: m.id, title: m.content?.substring(0, 60) || '', type: m.relatedTo?.[0] || 'generate', content: m.content, timestamp: m.created_at || m.timestamp })));
-        setLastPrompt(saved[0].content?.substring(0, 80) || '');
+        setSessions(saved.map((m: any) => ({ id: m.id, title: (m.expressed_text || m.content || '').substring(0, 60), type: m.relatedTo?.[0] || 'generate', content: m.expressed_text || m.content, timestamp: m.created_at || m.timestamp })));
+        setLastPrompt((saved[0].expressed_text || saved[0].content || '').substring(0, 80));
       }
     } catch (e) {}
   };
@@ -110,38 +107,38 @@ export default function AIImageCapability() {
     <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={[styles.iconWrapLarge, { backgroundColor: '#EC489920' }]}>
-            <ImageIcon size={24} stroke=colors.rose />
+          <View style={[styles.iconWrapLarge, { backgroundColor: colors.rose + '20' }]}>
+            <ImageIcon size={24} stroke={colors.rose} />
           </View>
           <View>
-            <Text style={styles.headerTitle}>AI Image Lab</Text>
-            <Text style={styles.headerSubtitle}>{rtl.isRTL ? 'معمل الصور' : 'Image Lab'}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>AI Image Lab</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{rtl.isRTL ? 'معمل الصور' : 'Image Lab'}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.closeBtn} onPress={handleDeactivate}>
-          <Text style={styles.closeText}>✕</Text>
+          <Text style={[styles.closeText, { color: colors.textSecondary }]}>✕</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {lastPrompt && (
-          <View style={styles.lastPromptCard}>
-            <Brain size={16} stroke=colors.rose />
-            <Text style={styles.lastPromptText}>{rtl.isRTL ? 'آخر وصف:' : 'Last prompt:'} {lastPrompt}</Text>
+          <View style={[styles.lastPromptCard, { backgroundColor: colors.rose + '10' }]}>
+            <Brain size={16} stroke={colors.rose} />
+            <Text style={[styles.lastPromptText, { color: colors.rose }]}>{rtl.isRTL ? 'آخر وصف:' : 'Last prompt:'} {lastPrompt}</Text>
           </View>
         )}
 
-        <View style={styles.canvasCard}>
+        <View style={[styles.canvasCard, { backgroundColor: colors.card, borderColor: colors.rose + '40' }]}>
           <View style={styles.canvasHeader}>
-            <Wand2 size={16} stroke=colors.rose />
-            <Text style={styles.canvasLabel}>{rtl.isRTL ? 'ماذا تريد أن تصنع؟' : 'What do you want to create?'}</Text>
+            <Wand2 size={16} stroke={colors.rose} />
+            <Text style={[styles.canvasLabel, { color: colors.rose }]}>{rtl.isRTL ? 'ماذا تريد أن تصنع؟' : 'What do you want to create?'}</Text>
           </View>
           <TextInput
-            style={[styles.canvasInput, { textAlign: rtl.textAlign }]}
+            style={[styles.canvasInput, { textAlign: rtl.textAlign, backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
             value={inputText}
             onChangeText={setInputText}
             placeholder={rtl.isRTL ? 'صف الصورة التي تتخيلها...' : 'Describe the image you imagine...'}
-            placeholderTextColor="#4A5568"
+            placeholderTextColor={colors.textSecondary}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
@@ -164,26 +161,26 @@ export default function AIImageCapability() {
             })}
           </View>
 
-          {isProcessing && <Text style={styles.processingText}>{rtl.isRTL ? 'جاري التوليد...' : 'Generating...'}</Text>}
+          {isProcessing && <Text style={[styles.processingText, { color: colors.rose }]}>{rtl.isRTL ? 'جاري التوليد...' : 'Generating...'}</Text>}
 
           {lastResponse !== '' && (
-            <View style={styles.responseCard}>
-              <Text style={styles.responseText} numberOfLines={10}>{lastResponse}</Text>
+            <View style={[styles.responseCard, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+              <Text style={[styles.responseText, { color: colors.text }]} numberOfLines={10}>{lastResponse}</Text>
             </View>
           )}
         </View>
 
         {sessions.length > 0 && (
           <View style={styles.sessionsSection}>
-            <Text style={styles.sectionTitle}>{rtl.isRTL ? 'جلسات سابقة' : 'Previous Sessions'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{rtl.isRTL ? 'جلسات سابقة' : 'Previous Sessions'}</Text>
             {sessions.slice(0, 5).map(session => (
-              <View key={session.id} style={styles.sessionItem}>
-                <View style={[styles.sessionIcon, { backgroundColor: '#EC489920' }]}>
-                  <ImageIcon size={14} stroke=colors.rose />
+              <View key={session.id} style={[styles.sessionItem, { backgroundColor: colors.card }]}>
+                <View style={[styles.sessionIcon, { backgroundColor: colors.rose + '20' }]}>
+                  <ImageIcon size={14} stroke={colors.rose} />
                 </View>
                 <View style={styles.sessionInfo}>
-                  <Text style={styles.sessionTitle} numberOfLines={1}>{session.title}</Text>
-                  <Text style={styles.sessionTime}>{new Date(session.timestamp).toLocaleDateString(rtl.isRTL ? 'ar' : 'en')}</Text>
+                  <Text style={[styles.sessionTitle, { color: colors.text }]} numberOfLines={1}>{session.title}</Text>
+                  <Text style={[styles.sessionTime, { color: colors.textSecondary }]}>{new Date(session.timestamp).toLocaleDateString(rtl.isRTL ? 'ar' : 'en')}</Text>
                 </View>
               </View>
             ))}
@@ -200,27 +197,27 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACE.md },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   iconWrapLarge: { width: 48, height: 48, borderRadius: RADIUS.sm, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  headerSubtitle: { color: colors.textSecondary, fontSize: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerSubtitle: { fontSize: 12 },
   closeBtn: { padding: 8, borderRadius: RADIUS.sm, backgroundColor: 'rgba(255,255,255,0.05)' },
-  closeText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
-  lastPromptCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: 'rgba(236,72,153,0.08)', borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
-  lastPromptText: { color: colors.rose, fontSize: 13, flex: 1 },
-  canvasCard: { backgroundColor: colors.card, borderRadius: RADIUS.card, borderWidth: 1, borderColor: 'rgba(236, 72, 153, 0.25)', padding: SPACE.md },
+  closeText: { fontSize: 16, fontWeight: '700' },
+  lastPromptCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
+  lastPromptText: { fontSize: 13, flex: 1 },
+  canvasCard: { borderRadius: RADIUS.card, borderWidth: 1, padding: SPACE.md },
   canvasHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.sm },
-  canvasLabel: { color: colors.rose, fontSize: 14, fontWeight: '600' },
-  canvasInput: { backgroundColor: colors.inputBg, borderRadius: RADIUS.sm, padding: 14, fontSize: 15, color: colors.text, borderWidth: 1, borderColor: colors.border, minHeight: 100 },
+  canvasLabel: { fontSize: 14, fontWeight: '600' },
+  canvasInput: { borderRadius: RADIUS.sm, padding: 14, fontSize: 15, borderWidth: 1, minHeight: 100 },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm, marginTop: SPACE.md },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: RADIUS.sm, borderWidth: 1.5 },
   actionLabel: { fontSize: 13, fontWeight: '600' },
-  processingText: { color: colors.rose, fontSize: 13, marginTop: SPACE.sm, fontStyle: 'italic' },
-  responseCard: { backgroundColor: colors.inputBg, borderRadius: RADIUS.sm, padding: SPACE.md, marginTop: SPACE.md, borderWidth: 1, borderColor: colors.border },
-  responseText: { color: colors.text, fontSize: 14, lineHeight: 22 },
+  processingText: { fontSize: 13, marginTop: SPACE.sm, fontStyle: 'italic' },
+  responseCard: { borderRadius: RADIUS.sm, padding: SPACE.md, marginTop: SPACE.md, borderWidth: 1 },
+  responseText: { fontSize: 14, lineHeight: 22 },
   sessionsSection: { marginTop: SPACE.md },
-  sectionTitle: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', marginBottom: SPACE.sm },
-  sessionItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: colors.card, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: 6 },
+  sectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: SPACE.sm },
+  sessionItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: 6 },
   sessionIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   sessionInfo: { flex: 1 },
-  sessionTitle: { color: colors.text, fontSize: 13, fontWeight: '500' },
-  sessionTime: { color: colors.textSecondary, fontSize: 10 },
+  sessionTitle: { fontSize: 13, fontWeight: '500' },
+  sessionTime: { fontSize: 10 },
 });

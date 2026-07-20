@@ -21,16 +21,13 @@ interface Task {
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
-  high: colors.danger,
-  medium: colors.gold,
-  low: colors.success,
+  high: '#EF4444',
+  medium: '#F59E0B',
+  low: '#10B981',
 };
 
 export default function TaskManagerCapability() {
-  const { colors } = useAppTheme();
-  const { colors } = useAppTheme();
   const rtl = useRTL();
-  const { colors } = useAppTheme();
   const { colors } = useAppTheme();
   const [active, setActive] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -51,10 +48,10 @@ export default function TaskManagerCapability() {
     try {
       const saved = await unifiedBrainBridge.getCapabilityMemory('task_manager', 10);
       if (saved.length > 0) {
-        const restoredTasks: Task[] = saved.map(m => ({
+        const restoredTasks: Task[] = saved.map((m: any) => ({
           id: m.id,
-          title: m.content?.substring(0, 100) || '',
-          priority: (m.relatedTo?.find(r => ['high', 'medium', 'low'].includes(r)) || 'medium') as Task['priority'],
+          title: (m.expressed_text || m.content || '').substring(0, 100),
+          priority: (m.relatedTo?.find((r: string) => ['high', 'medium', 'low'].includes(r)) || 'medium') as Task['priority'],
           completed: m.relatedTo?.includes('completed'),
           dueDate: m.created_at || m.timestamp,
           createdAt: m.created_at || m.timestamp,
@@ -153,53 +150,53 @@ export default function TaskManagerCapability() {
     <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={[styles.iconWrapLarge, { backgroundColor: '#F59E0B20' }]}>
-            <CheckSquare size={24} stroke=colors.gold />
+          <View style={[styles.iconWrapLarge, { backgroundColor: colors.gold + '20' }]}>
+            <CheckSquare size={24} stroke={colors.gold} />
           </View>
           <View>
-            <Text style={styles.headerTitle}>Task Manager</Text>
-            <Text style={styles.headerSubtitle}>{rtl.isRTL ? 'مدير المهام' : 'Task Manager'}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Task Manager</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{rtl.isRTL ? 'مدير المهام' : 'Task Manager'}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.closeBtn} onPress={handleDeactivate}>
-          <Text style={styles.closeText}>✕</Text>
+          <Text style={[styles.closeText, { color: colors.textSecondary }]}>✕</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <ListChecks size={16} stroke=colors.gold />
-            <Text style={styles.statValue}>{tasks.length}</Text>
-            <Text style={styles.statLabel}>{rtl.isRTL ? 'مهام' : 'Tasks'}</Text>
+          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+            <ListChecks size={16} stroke={colors.gold} />
+            <Text style={[styles.statValue, { color: colors.text }]}>{tasks.length}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{rtl.isRTL ? 'مهام' : 'Tasks'}</Text>
           </View>
-          <View style={styles.statCard}>
-            <TrendingUp size={16} stroke=colors.success />
-            <Text style={styles.statValue}>{completedCount}</Text>
-            <Text style={styles.statLabel}>{rtl.isRTL ? 'مكتملة' : 'Done'}</Text>
+          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+            <TrendingUp size={16} stroke={colors.success} />
+            <Text style={[styles.statValue, { color: colors.text }]}>{completedCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{rtl.isRTL ? 'مكتملة' : 'Done'}</Text>
           </View>
-          <View style={styles.statCard}>
-            <Target size={16} stroke=colors.accent />
-            <Text style={styles.statValue}>{tasks.length - completedCount}</Text>
-            <Text style={styles.statLabel}>{rtl.isRTL ? 'متبقية' : 'Left'}</Text>
+          <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+            <Target size={16} stroke={colors.accent} />
+            <Text style={[styles.statValue, { color: colors.text }]}>{tasks.length - completedCount}</Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{rtl.isRTL ? 'متبقية' : 'Left'}</Text>
           </View>
         </View>
 
-        <View style={styles.canvasCard}>
+        <View style={[styles.canvasCard, { backgroundColor: colors.card, borderColor: colors.gold + '40' }]}>
           <View style={styles.canvasHeader}>
-            <Plus size={16} stroke=colors.gold />
-            <Text style={styles.canvasLabel}>{rtl.isRTL ? 'مهمة جديدة' : 'New Task'}</Text>
+            <Plus size={16} stroke={colors.gold} />
+            <Text style={[styles.canvasLabel, { color: colors.gold }]}>{rtl.isRTL ? 'مهمة جديدة' : 'New Task'}</Text>
           </View>
           <View style={styles.addRow}>
             <TextInput
-              style={[styles.addInput, { textAlign: rtl.textAlign }]}
+              style={[styles.addInput, { textAlign: rtl.textAlign, backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
               value={inputText}
               onChangeText={setInputText}
               placeholder={rtl.isRTL ? 'ما الذي تريد إنجازه؟' : 'What do you want to accomplish?'}
-              placeholderTextColor=colors.textSecondary
+              placeholderTextColor={colors.textSecondary}
               onSubmitEditing={addTask}
             />
-            <TouchableOpacity style={styles.addBtn} onPress={addTask} disabled={isProcessing}>
+            <TouchableOpacity style={[styles.addBtn, { backgroundColor: colors.gold }]} onPress={addTask} disabled={isProcessing}>
               <ChevronRight size={18} stroke="#FFF" />
             </TouchableOpacity>
           </View>
@@ -209,10 +206,10 @@ export default function TaskManagerCapability() {
           {(['all', 'active', 'completed'] as const).map(filter => (
             <TouchableOpacity
               key={filter}
-              style={[styles.filterChip, activeFilter === filter && { backgroundColor: '#F59E0B20', borderColor: colors.gold }]}
+              style={[styles.filterChip, { borderColor: colors.border }, activeFilter === filter && { backgroundColor: colors.gold + '20', borderColor: colors.gold }]}
               onPress={() => setActiveFilter(filter)}
             >
-              <Text style={[styles.filterText, activeFilter === filter && { color: colors.gold }]}>
+              <Text style={[styles.filterText, { color: colors.textSecondary }, activeFilter === filter && { color: colors.gold }]}>
                 {filter === 'all' ? (rtl.isRTL ? 'الكل' : 'All') : filter === 'active' ? (rtl.isRTL ? 'نشطة' : 'Active') : (rtl.isRTL ? 'مكتملة' : 'Done')}
               </Text>
             </TouchableOpacity>
@@ -224,19 +221,19 @@ export default function TaskManagerCapability() {
             {filteredTasks.map(task => (
               <TouchableOpacity
                 key={task.id}
-                style={[styles.taskItem, task.completed && styles.taskCompleted]}
+                style={[styles.taskItem, { backgroundColor: colors.card }, task.completed && styles.taskCompleted]}
                 onPress={() => toggleTask(task.id)}
               >
-                <View style={[styles.checkbox, task.completed && { backgroundColor: colors.success, borderColor: colors.success }]}>
+                <View style={[styles.checkbox, { borderColor: colors.gold }, task.completed && { backgroundColor: colors.success, borderColor: colors.success }]}>
                   {task.completed && <CheckSquare size={14} stroke="#FFF" />}
                 </View>
                 <View style={styles.taskInfo}>
-                  <Text style={[styles.taskTitle, task.completed && styles.taskTitleDone]} numberOfLines={2}>
+                  <Text style={[styles.taskTitle, { color: colors.text }, task.completed && styles.taskTitleDone]} numberOfLines={2}>
                     {task.title}
                   </Text>
                   <View style={styles.taskMeta}>
                     <View style={[styles.priorityDot, { backgroundColor: PRIORITY_COLORS[task.priority] }]} />
-                    <Text style={styles.taskDate}>
+                    <Text style={[styles.taskDate, { color: colors.textSecondary }]}>
                       {new Date(task.createdAt).toLocaleDateString(rtl.isRTL ? 'ar' : 'en')}
                     </Text>
                   </View>
@@ -245,7 +242,7 @@ export default function TaskManagerCapability() {
             ))}
           </View>
         ) : (
-          <Text style={styles.emptyText}>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
             {rtl.isRTL ? 'لا توجد مهام. أضف مهمتك الأولى!' : 'No tasks yet. Add your first task!'}
           </Text>
         )}
@@ -260,32 +257,32 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACE.md },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   iconWrapLarge: { width: 48, height: 48, borderRadius: RADIUS.sm, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  headerSubtitle: { color: colors.textSecondary, fontSize: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerSubtitle: { fontSize: 12 },
   closeBtn: { padding: 8, borderRadius: RADIUS.sm, backgroundColor: 'rgba(255,255,255,0.05)' },
-  closeText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
+  closeText: { fontSize: 16, fontWeight: '700' },
   statsRow: { flexDirection: 'row', gap: SPACE.sm },
-  statCard: { flex: 1, backgroundColor: colors.card, borderRadius: RADIUS.card, padding: SPACE.sm, alignItems: 'center', gap: 4 },
-  statValue: { color: colors.text, fontSize: 22, fontWeight: '700' },
-  statLabel: { color: colors.textSecondary, fontSize: 11 },
-  canvasCard: { backgroundColor: colors.card, borderRadius: RADIUS.card, borderWidth: 1, borderColor: 'rgba(245, 158, 11, 0.25)', padding: SPACE.md },
+  statCard: { flex: 1, borderRadius: RADIUS.card, padding: SPACE.sm, alignItems: 'center', gap: 4 },
+  statValue: { fontSize: 22, fontWeight: '700' },
+  statLabel: { fontSize: 11 },
+  canvasCard: { borderRadius: RADIUS.card, borderWidth: 1, padding: SPACE.md },
   canvasHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.sm },
-  canvasLabel: { color: colors.gold, fontSize: 14, fontWeight: '600' },
+  canvasLabel: { fontSize: 14, fontWeight: '600' },
   addRow: { flexDirection: 'row', gap: SPACE.sm },
-  addInput: { flex: 1, backgroundColor: colors.inputBg, borderRadius: RADIUS.sm, padding: 12, fontSize: 15, color: colors.text, borderWidth: 1, borderColor: colors.border },
-  addBtn: { width: 44, height: 44, borderRadius: RADIUS.sm, backgroundColor: colors.gold, justifyContent: 'center', alignItems: 'center' },
+  addInput: { flex: 1, borderRadius: RADIUS.sm, padding: 12, fontSize: 15, borderWidth: 1 },
+  addBtn: { width: 44, height: 44, borderRadius: RADIUS.sm, justifyContent: 'center', alignItems: 'center' },
   filterRow: { flexDirection: 'row', gap: SPACE.sm },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: colors.border },
-  filterText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS.sm, borderWidth: 1 },
+  filterText: { fontSize: 13, fontWeight: '600' },
   tasksList: { gap: SPACE.sm },
-  taskItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: colors.card, borderRadius: RADIUS.sm, padding: SPACE.sm },
+  taskItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.sm, padding: SPACE.sm },
   taskCompleted: { opacity: 0.6 },
-  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: colors.gold, justifyContent: 'center', alignItems: 'center' },
+  checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
   taskInfo: { flex: 1 },
-  taskTitle: { color: colors.text, fontSize: 14, fontWeight: '500' },
-  taskTitleDone: { textDecorationLine: 'line-through', color: colors.textSecondary },
+  taskTitle: { fontSize: 14, fontWeight: '500' },
+  taskTitleDone: { textDecorationLine: 'line-through' },
   taskMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   priorityDot: { width: 8, height: 8, borderRadius: 4 },
-  taskDate: { color: colors.textSecondary, fontSize: 11 },
-  emptyText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginTop: SPACE.lg },
+  taskDate: { fontSize: 11 },
+  emptyText: { fontSize: 14, textAlign: 'center', marginTop: SPACE.lg },
 });

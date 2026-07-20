@@ -20,18 +20,15 @@ interface SmartHomeSession {
 }
 
 const HOME_ACTIONS = [
-  { type: 'command', icon: Power, color: colors.success, label_ar: 'أمر', label_en: 'Command', placeholder_ar: 'ماذا تريد أن تفعل؟', placeholder_en: 'What do you want to do?' },
-  { type: 'status', icon: Home, color: colors.accent, label_ar: 'الحالة', label_en: 'Status', placeholder_ar: 'ما الذي تريد معرفته؟', placeholder_en: 'What do you want to know?' },
-  { type: 'environment', icon: Thermometer, color: colors.gold, label_ar: 'البيئة', label_en: 'Environment', placeholder_ar: 'ما البيئة التي تريدها؟', placeholder_en: 'What environment do you want?' },
-  { type: 'automation', icon: Sparkles, color: colors.accent, label_ar: 'أتمتة', label_en: 'Automation', placeholder_ar: 'ما الذي تريد أتمتته؟', placeholder_en: 'What do you want to automate?' },
-  { type: 'predictions', icon: Brain, color: colors.rose, label_ar: 'توقعات', label_en: 'Predictions', placeholder_ar: 'ماذا تتوقع؟', placeholder_en: 'What do you predict?' },
+  { type: 'command', icon: Power, color: '#10B981', label_ar: 'أمر', label_en: 'Command' },
+  { type: 'status', icon: Home, color: '#3B82F6', label_ar: 'الحالة', label_en: 'Status' },
+  { type: 'environment', icon: Thermometer, color: '#F59E0B', label_ar: 'البيئة', label_en: 'Environment' },
+  { type: 'automation', icon: Sparkles, color: '#A855F7', label_ar: 'أتمتة', label_en: 'Automation' },
+  { type: 'predictions', icon: Brain, color: '#EC4899', label_ar: 'توقعات', label_en: 'Predictions' },
 ];
 
 export default function SmartHomeCapability() {
-  const { colors } = useAppTheme();
-  const { colors } = useAppTheme();
   const rtl = useRTL();
-  const { colors } = useAppTheme();
   const { colors } = useAppTheme();
   const [active, setActive] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -52,8 +49,8 @@ export default function SmartHomeCapability() {
     try {
       const saved = await unifiedBrainBridge.getCapabilityMemory('smart_home', 5);
       if (saved.length > 0) {
-        setSessions(saved.map(m => ({ id: m.id, title: m.content?.substring(0, 60) || '', type: m.relatedTo?.[0] || 'command', content: m.content, timestamp: m.created_at || m.timestamp })));
-        setLastCommand(saved[0].content?.substring(0, 80) || '');
+        setSessions(saved.map((m: any) => ({ id: m.id, title: (m.expressed_text || m.content || '').substring(0, 60), type: m.relatedTo?.[0] || 'command', content: m.expressed_text || m.content, timestamp: m.created_at || m.timestamp })));
+        setLastCommand((saved[0].expressed_text || saved[0].content || '').substring(0, 80));
       }
     } catch (e) {}
   };
@@ -111,38 +108,38 @@ export default function SmartHomeCapability() {
     <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={[styles.iconWrapLarge, { backgroundColor: '#10B98120' }]}>
-            <Home size={24} stroke=colors.success />
+          <View style={[styles.iconWrapLarge, { backgroundColor: colors.success + '20' }]}>
+            <Home size={24} stroke={colors.success} />
           </View>
           <View>
-            <Text style={styles.headerTitle}>Smart Home</Text>
-            <Text style={styles.headerSubtitle}>{rtl.isRTL ? 'المنزل الذكي' : 'Smart Home'}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Smart Home</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{rtl.isRTL ? 'المنزل الذكي' : 'Smart Home'}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.closeBtn} onPress={handleDeactivate}>
-          <Text style={styles.closeText}>✕</Text>
+          <Text style={[styles.closeText, { color: colors.textSecondary }]}>✕</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {lastCommand && (
-          <View style={styles.lastCommandCard}>
-            <Brain size={16} stroke=colors.success />
-            <Text style={styles.lastCommandText}>{rtl.isRTL ? 'آخر أمر:' : 'Last command:'} {lastCommand}</Text>
+          <View style={[styles.lastCommandCard, { backgroundColor: colors.success + '10' }]}>
+            <Brain size={16} stroke={colors.success} />
+            <Text style={[styles.lastCommandText, { color: colors.success }]}>{rtl.isRTL ? 'آخر أمر:' : 'Last command:'} {lastCommand}</Text>
           </View>
         )}
 
-        <View style={styles.canvasCard}>
+        <View style={[styles.canvasCard, { backgroundColor: colors.card, borderColor: colors.success + '40' }]}>
           <View style={styles.canvasHeader}>
-            <Power size={16} stroke=colors.success />
-            <Text style={styles.canvasLabel}>{rtl.isRTL ? 'ماذا تريد أن تفعل في منزلك؟' : 'What do you want to do at home?'}</Text>
+            <Power size={16} stroke={colors.success} />
+            <Text style={[styles.canvasLabel, { color: colors.success }]}>{rtl.isRTL ? 'ماذا تريد أن تفعل في منزلك؟' : 'What do you want to do at home?'}</Text>
           </View>
           <TextInput
-            style={[styles.canvasInput, { textAlign: rtl.textAlign }]}
+            style={[styles.canvasInput, { textAlign: rtl.textAlign, backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
             value={inputText}
             onChangeText={setInputText}
             placeholder={rtl.isRTL ? 'مثلاً: شغل الإضاءة، اضبط الحرارة...' : 'e.g., Turn on lights, adjust temperature...'}
-            placeholderTextColor="#4A5568"
+            placeholderTextColor={colors.textSecondary}
             multiline
             numberOfLines={3}
             textAlignVertical="top"
@@ -165,26 +162,26 @@ export default function SmartHomeCapability() {
             })}
           </View>
 
-          {isProcessing && <Text style={styles.processingText}>{rtl.isRTL ? 'جاري التنفيذ...' : 'Executing...'}</Text>}
+          {isProcessing && <Text style={[styles.processingText, { color: colors.success }]}>{rtl.isRTL ? 'جاري التنفيذ...' : 'Executing...'}</Text>}
 
           {lastResponse !== '' && (
-            <View style={styles.responseCard}>
-              <Text style={styles.responseText} numberOfLines={10}>{lastResponse}</Text>
+            <View style={[styles.responseCard, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+              <Text style={[styles.responseText, { color: colors.text }]} numberOfLines={10}>{lastResponse}</Text>
             </View>
           )}
         </View>
 
         {sessions.length > 0 && (
           <View style={styles.sessionsSection}>
-            <Text style={styles.sectionTitle}>{rtl.isRTL ? 'أوامر سابقة' : 'Previous Commands'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{rtl.isRTL ? 'أوامر سابقة' : 'Previous Commands'}</Text>
             {sessions.slice(0, 5).map(session => (
-              <View key={session.id} style={styles.sessionItem}>
-                <View style={[styles.sessionIcon, { backgroundColor: '#10B98120' }]}>
-                  <Home size={14} stroke=colors.success />
+              <View key={session.id} style={[styles.sessionItem, { backgroundColor: colors.card }]}>
+                <View style={[styles.sessionIcon, { backgroundColor: colors.success + '20' }]}>
+                  <Home size={14} stroke={colors.success} />
                 </View>
                 <View style={styles.sessionInfo}>
-                  <Text style={styles.sessionTitle} numberOfLines={1}>{session.title}</Text>
-                  <Text style={styles.sessionTime}>{new Date(session.timestamp).toLocaleDateString(rtl.isRTL ? 'ar' : 'en')}</Text>
+                  <Text style={[styles.sessionTitle, { color: colors.text }]} numberOfLines={1}>{session.title}</Text>
+                  <Text style={[styles.sessionTime, { color: colors.textSecondary }]}>{new Date(session.timestamp).toLocaleDateString(rtl.isRTL ? 'ar' : 'en')}</Text>
                 </View>
               </View>
             ))}
@@ -201,27 +198,27 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACE.md },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   iconWrapLarge: { width: 48, height: 48, borderRadius: RADIUS.sm, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  headerSubtitle: { color: colors.textSecondary, fontSize: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerSubtitle: { fontSize: 12 },
   closeBtn: { padding: 8, borderRadius: RADIUS.sm, backgroundColor: 'rgba(255,255,255,0.05)' },
-  closeText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
-  lastCommandCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: 'rgba(16,185,129,0.08)', borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
-  lastCommandText: { color: colors.success, fontSize: 13, flex: 1 },
-  canvasCard: { backgroundColor: colors.card, borderRadius: RADIUS.card, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.25)', padding: SPACE.md },
+  closeText: { fontSize: 16, fontWeight: '700' },
+  lastCommandCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: SPACE.md },
+  lastCommandText: { fontSize: 13, flex: 1 },
+  canvasCard: { borderRadius: RADIUS.card, borderWidth: 1, padding: SPACE.md },
   canvasHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.sm },
-  canvasLabel: { color: colors.success, fontSize: 14, fontWeight: '600' },
-  canvasInput: { backgroundColor: colors.inputBg, borderRadius: RADIUS.sm, padding: 14, fontSize: 15, color: colors.text, borderWidth: 1, borderColor: colors.border, minHeight: 80 },
+  canvasLabel: { fontSize: 14, fontWeight: '600' },
+  canvasInput: { borderRadius: RADIUS.sm, padding: 14, fontSize: 15, borderWidth: 1, minHeight: 80 },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm, marginTop: SPACE.md },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: RADIUS.sm, borderWidth: 1.5 },
   actionLabel: { fontSize: 13, fontWeight: '600' },
-  processingText: { color: colors.success, fontSize: 13, marginTop: SPACE.sm, fontStyle: 'italic' },
-  responseCard: { backgroundColor: colors.inputBg, borderRadius: RADIUS.sm, padding: SPACE.md, marginTop: SPACE.md, borderWidth: 1, borderColor: colors.border },
-  responseText: { color: colors.text, fontSize: 14, lineHeight: 22 },
+  processingText: { fontSize: 13, marginTop: SPACE.sm, fontStyle: 'italic' },
+  responseCard: { borderRadius: RADIUS.sm, padding: SPACE.md, marginTop: SPACE.md, borderWidth: 1 },
+  responseText: { fontSize: 14, lineHeight: 22 },
   sessionsSection: { marginTop: SPACE.md },
-  sectionTitle: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', marginBottom: SPACE.sm },
-  sessionItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: colors.card, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: 6 },
+  sectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: SPACE.sm },
+  sessionItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: 6 },
   sessionIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   sessionInfo: { flex: 1 },
-  sessionTitle: { color: colors.text, fontSize: 13, fontWeight: '500' },
-  sessionTime: { color: colors.textSecondary, fontSize: 10 },
+  sessionTitle: { fontSize: 13, fontWeight: '500' },
+  sessionTime: { fontSize: 10 },
 });

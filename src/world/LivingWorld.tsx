@@ -1,14 +1,19 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
-import { stateBus } from '../core/StateBus';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableWithoutFeedback } from 'react-native';
+import { usePresence } from '../hooks/usePresence';
+import { useBreathAnimation } from '../hooks/useBreathAnimation';
+import { useEmotionalState } from '../hooks/useEmotionalState';
+import { useBondLevel } from '../hooks/useBondLevel';
+import { useTwinBrain } from '../hooks/useTwinBrain';
 import { EventBus } from '../core/EventBus';
-import { unifiedBrainBridge, UnifiedResponse } from '../core/UnifiedBrainBridge';
-import { perceptionEngine } from '../../engine/perception/PerceptionEngine';
-import { presenceEngine } from '../../engine/presence/PresenceEngine';
+import { stateBus } from '../core/StateBus';
+import { unifiedBrainBridge } from '../core/UnifiedBrainBridge';
 import { getGreeting } from '../utils/languageDetector';
 import { useRTL } from '../../lib/useRTL';
-import { useAppTheme } from '../../engine/colors';
 import { capabilityOrchestrator } from '../coordinators/CapabilityOrchestrator';
+import { presenceEngine } from '../../engine/presence/PresenceEngine';
+import { perceptionEngine } from '../../engine/perception/PerceptionEngine';
+import { useAppTheme } from '../../engine/colors';
 import BirthSequence from '../renderers/zones/BirthSequence';
 import GreetingWord from '../renderers/zones/GreetingWord';
 import ThinkingIndicator from '../renderers/zones/ThinkingIndicator';
@@ -43,12 +48,16 @@ import { audioMixer } from '../core/AudioMixer';
 import { SPACE, RADIUS } from '../../src/design/tokens/spacing';
 
 export default function LivingWorld() {
-  const { colors } = useAppTheme();
-  const { colors } = useAppTheme();
   const userId = useTwinStore(s => s.userId) || '';
-  const rtl = useRTL();
   const { colors } = useAppTheme();
-  const greeting = getGreeting();
+  const presence = usePresence();
+  const breath = useBreathAnimation();
+  const emotion = useEmotionalState();
+  const bond = useBondLevel();
+  const { isThinking, thinkingPhase, streamedText, streamMessage, setUserId } = useTwinBrain();
+  const rtl = useRTL();
+
+  useEffect(() => { if (userId) setUserId(userId); }, [userId, setUserId]);
 
   const [birthComplete, setBirthComplete] = useState(false);
   const [showGreeting, setShowGreeting] = useState(false);
@@ -56,27 +65,11 @@ export default function LivingWorld() {
   const [inputText, setInputText] = useState('');
   const [messages, setMessages] = useState<Array<{ id: string; sender: 'user' | 'twin'; text: string }>>([]);
   const [showInput, setShowInput] = useState(false);
-  const [isThinking, setIsThinking] = useState(false);
-  const [thinkingPhase, setThinkingPhase] = useState<{ phase: string; progress: number; label: string } | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [streamedText, setStreamedText] = useState('');
   const [memoryEchoVisible, setMemoryEchoVisible] = useState(false);
   const [echoColor, setEchoColor] = useState(colors.accent);
   const [isWriting, setIsWriting] = useState(false);
-  const messagesEndRef = useRef<View>(null);
+  const greeting = getGreeting();
 
-  // تهيئة userId للجسر
-  useEffect(() => {
-    if (userId) unifiedBrainBridge.setUserId(userId);
-  }, [userId]);
-
-  // بدء حلقة الحضور (بعد أن تصبح PresenceEngine مستهلكاً)
-  useEffect(() => {
-    presenceEngine.startPresenceLoop();
-    return () => presenceEngine.stopPresenceLoop();
-  }, []);
-
-  // استماع لتغيرات audio من stateBus
   useEffect(() => {
     const unsubscribe = stateBus.on('presence:state_updated', (event: string, data: any) => {
       if (data.warmth > 0.8) audioMixer.setContext('celebration');
@@ -87,7 +80,11 @@ export default function LivingWorld() {
     return unsubscribe;
   }, []);
 
-  // استماع لـ MEMORY_SURFACED من EventBus (قد يأتي من UnifiedBrainBridge)
+  useEffect(() => {
+    presenceEngine.startPresenceLoop();
+    return () => presenceEngine.stopPresenceLoop();
+  }, []);
+
   useEffect(() => {
     const unsub = EventBus.on('MEMORY_SURFACED', (payload: any) => {
       setEchoColor(payload?.color || colors.accent);
@@ -95,9 +92,42 @@ export default function LivingWorld() {
       setTimeout(() => setMemoryEchoVisible(false), 1200);
     });
     return unsub;
-  }, []);
+  }, [colors.accent]);
 
-  // تحديث آخر رسالة بالـ streamedText
+  const handleBirthComplete = useCallback(() => { setBirthComplete(true); }, []);
+  useEffect(() => { if (birthComplete) setShowGreeting(true); }, [birthComplete]);
+  const handleGreetingComplete = useCallback(() => setGreetingDone(true), []);
+  const handleFirstInteraction = useCallback(() => { if (!greetingDone) return; setShowInput(true); }, [greetingDone]);
+
+  const handleSend = useCallback(async () => {
+    if (!inputText.trim() || isThinking) return;
+    const text = inputText.trim();
+    
+    // ✅ تحليل الإدراك وإرساله مع الرسالة
+    const perceptionResult = perceptionEngine.analyze(text);
+    const perception = {
+      typingSpeed: 0,
+      messageLength: text.length,
+      absenceDurationMinutes: 0,
+      timeOfDay: 'morning' as const,
+      userState: perceptionResult.userState,
+    };
+
+    try {
+      const orchestration = await capabilityOrchestrator.orchestrate(text, userId);
+      if (orchestration.primaryCapability !== 'general' && orchestration.primaryCapability !== null) {
+        capabilityOrchestrator.activateChain([orchestration.primaryCapability, ...orchestration.secondaryCapabilities]);
+      }
+    } catch (e) {}
+
+    setInputText('');
+    setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user' as const, text }]);
+    EventBus.emit('USER_SEND_MESSAGE', { message: text, timestamp: Date.now() });
+    const twinMsgId = (Date.now() + 1).toString();
+    setMessages(prev => [...prev, { id: twinMsgId, sender: 'twin', text: '' }]);
+    await streamMessage(text);
+  }, [inputText, isThinking, streamMessage, userId]);
+
   useEffect(() => {
     if (streamedText && messages.length > 0) {
       const lastMsg = messages[messages.length - 1];
@@ -109,126 +139,25 @@ export default function LivingWorld() {
         });
       }
     }
-  }, [streamedText]);
-
-  const handleBirthComplete = useCallback(() => {
-    setBirthComplete(true);
-    // بدء تسلسل التحية
-    setTimeout(() => setShowGreeting(true), 1500);
-  }, []);
-
-  const handleGreetingComplete = useCallback(() => {
-    setGreetingDone(true);
-    setShowInput(true);
-  }, []);
-
-  const handleFirstInteraction = useCallback(() => {
-    if (!greetingDone) return;
-    setShowInput(true);
-  }, [greetingDone]);
-
-  // إرسال رسالة
-  const handleSend = useCallback(async () => {
-    if (!inputText.trim() || isThinking) return;
-    const text = inputText.trim();
-
-    // جمع بيانات الإدراك
-    const perceptionResult = perceptionEngine.analyze(text);
-    const perception = {
-      typingSpeed: perceptionResult.typingSpeed || 0,
-      messageLength: text.length,
-      absenceDurationMinutes: 0,
-      timeOfDay: 'morning',
-      userState: perceptionResult.userState,
-    };
-
-    // إضافة رسالة المستخدم للعرض
-    setInputText('');
-    setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'user' as const, text }]);
-    EventBus.emit('USER_SEND_MESSAGE', { message: text, timestamp: Date.now() });
-
-    // إضافة رسالة مؤقتة للتوأم
-    const twinMsgId = (Date.now() + 1).toString();
-    setMessages(prev => [...prev, { id: twinMsgId, sender: 'twin', text: '' }]);
-
-    setIsThinking(true);
-    setStreamedText('');
-
-    try {
-      // إرسال عبر الجسر الموحد
-      const response: UnifiedResponse = await unifiedBrainBridge.process(text, {
-        typingSpeed: perception.typingSpeed,
-        messageLength: perception.messageLength,
-        absenceDurationMinutes: perception.absenceDuration,
-        timeOfDay: (perception.timeOfDay as 'morning' | 'afternoon' | 'evening' | 'night') || 'morning',
-        userState: perception.userState,
-      });
-
-      // تحديث StateBus من الاستجابة (سيغذي PresenceEngine و LivingLightEntity)
-      stateBus.updateFromUnifiedResponse(response);
-
-      // عرض الذاكرة المسترجعة إن وجدت
-      if (response.memory_surfaced) {
-        EventBus.emit('MEMORY_SURFACED', {
-          memoryId: response.memory_surfaced.id,
-          relevance: 0.8,
-          emotionalWeight: 0.7,
-          color: colors.accent,
-        });
-      }
-
-      // تحديث حالة التحدث
-      setIsSpeaking(response.reply.length > 0);
-      setStreamedText(response.reply);
-      
-      // محاكاة مراحل التفكير (اختياري)
-      if (response.timing) {
-        setThinkingPhase({ phase: 'observe', progress: 0, label: 'يراقب...' });
-        setTimeout(() => setThinkingPhase({ phase: 'understand', progress: 0.25, label: 'يفهم...' }), response.timing.observe_ms);
-        setTimeout(() => setThinkingPhase({ phase: 'recall', progress: 0.5, label: 'يتذكر...' }), response.timing.observe_ms + response.timing.understand_ms);
-        setTimeout(() => setThinkingPhase({ phase: 'reason', progress: 0.75, label: 'يفكر...' }), response.timing.observe_ms + response.timing.understand_ms + response.timing.recall_ms);
-        setTimeout(() => {
-          setThinkingPhase(null);
-          setIsThinking(false);
-        }, response.timing.observe_ms + response.timing.understand_ms + response.timing.recall_ms + response.timing.reason_ms);
-      } else {
-        setTimeout(() => {
-          setThinkingPhase(null);
-          setIsThinking(false);
-        }, 1000);
-      }
-
-      // تحديث Zustand stores
-      const store = useTwinStore.getState?.() || {};
-      if (response.twin_state_update) {
-        store.updateFromUnifiedResponse?.(response);
-      }
-
-    } catch (error) {
-      console.error('Error processing message:', error);
-      setIsThinking(false);
-      setThinkingPhase(null);
-      setStreamedText('');
-    }
-  }, [inputText, isThinking]);
+  }, [streamedText, messages]);
 
   if (!birthComplete) return <BirthSequence onComplete={handleBirthComplete} />;
 
   return (
     <WorldTransition>
       <TouchableWithoutFeedback onPress={handleFirstInteraction}>
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.bg }]}>
           <AmbientField />
           
           <LivingLightEntity 
             isThinking={isThinking}
-            isSpeaking={isSpeaking}
-            isListening={!isThinking && !isSpeaking}
+            isSpeaking={emotion.isSpeaking}
+            isListening={emotion.isListening}
             onLongPress={() => EventBus.emit('OPEN_SOUL_OBSERVATORY')}
           />
           
           <SoulObservatory />
-          <ConnectionField visible={true} />
+          <ConnectionField visible={bond.bondLevel >= 2} />
 
           <TwinPresenceZone
             onLongPress={() => EventBus.emit('OPEN_SOUL_OBSERVATORY')}
@@ -267,7 +196,7 @@ export default function LivingWorld() {
               )}
               {messages.map(msg => (
                 <Text key={msg.id} style={[
-                  msg.sender === 'user' ? styles.userMessage : styles.twinMessage,
+                  msg.sender === 'user' ? [styles.userMessage, { color: colors.textSecondary }] : [styles.twinMessage, { color: colors.text }],
                   { textAlign: msg.sender === 'user' ? rtl.textAlign : (rtl.isRTL ? 'left' : 'right') }
                 ]}>
                   {msg.text}
@@ -292,9 +221,9 @@ export default function LivingWorld() {
           <MemoryForest />
 
           {showInput && (
-            <View style={styles.inputContainer}>
+            <View style={[styles.inputContainer, { backgroundColor: colors.card }]}>
               <TextInput
-                style={[styles.input, { textAlign: rtl.textAlign }]}
+                style={[styles.input, { textAlign: rtl.textAlign, color: colors.text }]}
                 value={inputText}
                 onChangeText={(text) => {
                   setInputText(text);
@@ -304,7 +233,7 @@ export default function LivingWorld() {
                 }}
                 onSubmitEditing={handleSend}
                 editable={!isThinking}
-                placeholder={rtl.isRTL ? 'اكتب رسالتك...' : 'Write your message...'}
+                placeholder={rtl.isRTL ? 'اكتب رسالتك الأولى...' : 'Write your first message...'}
                 placeholderTextColor={colors.textSecondary}
               />
             </View>
@@ -318,7 +247,7 @@ export default function LivingWorld() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
+  container: { flex: 1 },
   capabilityContainer: {
     position: 'absolute', top: 100, left: 0, right: 0, zIndex: 15,
   },
@@ -332,12 +261,11 @@ const styles = StyleSheet.create({
   memoryContainer: {
     position: 'absolute', bottom: 100, left: 0, right: 0, zIndex: 11,
   },
-  userMessage: { color: colors.textSecondary, fontSize: 18, alignSelf: 'flex-end', marginVertical: SPACE.xs },
-  twinMessage: { color: colors.text, fontSize: 20, alignSelf: 'flex-start', marginVertical: SPACE.xs },
+  userMessage: { fontSize: 18, alignSelf: 'flex-end', marginVertical: SPACE.xs },
+  twinMessage: { fontSize: 20, alignSelf: 'flex-start', marginVertical: SPACE.xs },
   inputContainer: {
     position: 'absolute', bottom: 30, left: SPACE.lg, right: SPACE.lg,
-    padding: SPACE.md, backgroundColor: colors.card,
-    borderRadius: RADIUS.input, zIndex: 20,
+    padding: SPACE.md, borderRadius: RADIUS.input, zIndex: 20,
   },
-  input: { color: colors.text, fontSize: 18 },
+  input: { fontSize: 18 },
 });

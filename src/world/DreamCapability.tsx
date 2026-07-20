@@ -20,18 +20,15 @@ interface DreamSession {
 }
 
 const DREAM_ACTIONS = [
-  { type: 'interpret', icon: Moon, color: colors.accent, label_ar: 'فسر حلمي', label_en: 'Interpret Dream', placeholder_ar: 'احكِ لي حلمك...', placeholder_en: 'Tell me your dream...' },
-  { type: 'dna', icon: Compass, color: '#6366F1', label_ar: 'بصمتي الحلمية', label_en: 'Dream DNA', placeholder_ar: 'ما نمط أحلامي؟', placeholder_en: 'What is my dream pattern?' },
-  { type: 'patterns', icon: TrendingUp, color: colors.accent, label_ar: 'أنماط متكررة', label_en: 'Recurring Patterns', placeholder_ar: 'ما الذي يتكرر في أحلامي؟', placeholder_en: 'What repeats in my dreams?' },
-  { type: 'symbols', icon: Search, color: colors.rose, label_ar: 'بحث عن رمز', label_en: 'Search Symbol', placeholder_ar: 'ما معنى هذا الرمز؟', placeholder_en: 'What does this symbol mean?' },
-  { type: 'forecast', icon: Sparkles, color: colors.gold, label_ar: 'توقعات', label_en: 'Forecast', placeholder_ar: 'ما الذي تخبرني به أحلامي؟', placeholder_en: 'What are my dreams telling me?' },
+  { type: 'interpret', icon: Moon, color: '#8B5CF6', label_ar: 'فسر حلمي', label_en: 'Interpret Dream' },
+  { type: 'dna', icon: Compass, color: '#6366F1', label_ar: 'بصمتي الحلمية', label_en: 'Dream DNA' },
+  { type: 'patterns', icon: TrendingUp, color: '#A855F7', label_ar: 'أنماط متكررة', label_en: 'Recurring Patterns' },
+  { type: 'symbols', icon: Search, color: '#EC4899', label_ar: 'بحث عن رمز', label_en: 'Search Symbol' },
+  { type: 'forecast', icon: Sparkles, color: '#F59E0B', label_ar: 'توقعات', label_en: 'Forecast' },
 ];
 
 export default function DreamCapability() {
-  const { colors } = useAppTheme();
-  const { colors } = useAppTheme();
   const rtl = useRTL();
-  const { colors } = useAppTheme();
   const { colors } = useAppTheme();
   const [active, setActive] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -53,8 +50,8 @@ export default function DreamCapability() {
     try {
       const saved = await unifiedBrainBridge.getCapabilityMemory('dream', 5);
       if (saved.length > 0) {
-        setSessions(saved.map(m => ({ id: m.id, title: m.content?.substring(0, 60) || '', type: 'dream', content: m.content, timestamp: m.created_at || m.timestamp })));
-        setLastDream(saved[0].content?.substring(0, 80) || '');
+        setSessions(saved.map((m: any) => ({ id: m.id, title: (m.expressed_text || m.content || '').substring(0, 60), type: 'dream', content: m.expressed_text || m.content, timestamp: m.created_at || m.timestamp })));
+        setLastDream((saved[0].expressed_text || saved[0].content || '').substring(0, 80));
         setDreamCount(saved.length);
       }
     } catch (e) {}
@@ -114,46 +111,46 @@ export default function DreamCapability() {
     <Animated.View entering={FadeIn.duration(400)} exiting={FadeOut.duration(300)} style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={[styles.iconWrapLarge, { backgroundColor: '#8B5CF620' }]}>
+          <View style={[styles.iconWrapLarge, { backgroundColor: '#8B5CF6' + '20' }]}>
             <Moon size={24} stroke="#8B5CF6" />
           </View>
           <View>
-            <Text style={styles.headerTitle}>Dream World</Text>
-            <Text style={styles.headerSubtitle}>{rtl.isRTL ? 'عالم الأحلام' : 'Dream World'}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Dream World</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{rtl.isRTL ? 'عالم الأحلام' : 'Dream World'}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.closeBtn} onPress={handleDeactivate}>
-          <Text style={styles.closeText}>✕</Text>
+          <Text style={[styles.closeText, { color: colors.textSecondary }]}>✕</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.canvasCard}>
+        <View style={[styles.canvasCard, { backgroundColor: colors.card, borderColor: '#8B5CF6' + '40' }]}>
           <View style={styles.canvasHeader}>
             <Moon size={16} stroke="#8B5CF6" />
-            <Text style={styles.canvasLabel}>{rtl.isRTL ? 'احكِ لي حلمك...' : 'Tell me your dream...'}</Text>
+            <Text style={[styles.canvasLabel, { color: '#8B5CF6' }]}>{rtl.isRTL ? 'احكِ لي حلمك...' : 'Tell me your dream...'}</Text>
           </View>
           <TextInput
-            style={[styles.canvasInput, { textAlign: rtl.textAlign }]}
+            style={[styles.canvasInput, { textAlign: rtl.textAlign, backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.text }]}
             value={inputText}
             onChangeText={setInputText}
             placeholder={rtl.isRTL ? 'احكِ لي ما رأيته الليلة...' : 'Tell me what you saw tonight...'}
-            placeholderTextColor="#4A5568"
+            placeholderTextColor={colors.textSecondary}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
           />
 
           {lastDream && (
-            <View style={styles.lastDreamCard}>
+            <View style={[styles.lastDreamCard, { backgroundColor: '#8B5CF6' + '10' }]}>
               <Brain size={16} stroke="#8B5CF6" />
-              <Text style={styles.lastDreamText}>{rtl.isRTL ? 'آخر حلم:' : 'Last dream:'} {lastDream}</Text>
+              <Text style={[styles.lastDreamText, { color: '#8B5CF6' }]}>{rtl.isRTL ? 'آخر حلم:' : 'Last dream:'} {lastDream}</Text>
             </View>
           )}
 
           {dreamCount > 0 && (
             <View style={styles.statsRow}>
-              <Text style={styles.statText}>{dreamCount} {rtl.isRTL ? 'حلم' : 'dreams'}</Text>
+              <Text style={[styles.statText, { color: colors.textSecondary }]}>{dreamCount} {rtl.isRTL ? 'حلم' : 'dreams'}</Text>
             </View>
           )}
 
@@ -174,26 +171,26 @@ export default function DreamCapability() {
             })}
           </View>
 
-          {isProcessing && <Text style={styles.processingText}>{rtl.isRTL ? 'جاري التحليل...' : 'Analyzing...'}</Text>}
+          {isProcessing && <Text style={[styles.processingText, { color: '#8B5CF6' }]}>{rtl.isRTL ? 'جاري التحليل...' : 'Analyzing...'}</Text>}
 
           {lastResponse !== '' && (
-            <View style={styles.responseCard}>
-              <Text style={styles.responseText} numberOfLines={10}>{lastResponse}</Text>
+            <View style={[styles.responseCard, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+              <Text style={[styles.responseText, { color: colors.text }]} numberOfLines={10}>{lastResponse}</Text>
             </View>
           )}
         </View>
 
         {sessions.length > 0 && (
           <View style={styles.sessionsSection}>
-            <Text style={styles.sectionTitle}>{rtl.isRTL ? 'سجل الأحلام' : 'Dream History'}</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{rtl.isRTL ? 'سجل الأحلام' : 'Dream History'}</Text>
             {sessions.slice(0, 5).map(session => (
-              <View key={session.id} style={styles.sessionItem}>
-                <View style={[styles.sessionIcon, { backgroundColor: '#8B5CF620' }]}>
+              <View key={session.id} style={[styles.sessionItem, { backgroundColor: colors.card }]}>
+                <View style={[styles.sessionIcon, { backgroundColor: '#8B5CF6' + '20' }]}>
                   <Moon size={14} stroke="#8B5CF6" />
                 </View>
                 <View style={styles.sessionInfo}>
-                  <Text style={styles.sessionTitle} numberOfLines={1}>{session.title}</Text>
-                  <Text style={styles.sessionTime}>{new Date(session.timestamp).toLocaleDateString(rtl.isRTL ? 'ar' : 'en')}</Text>
+                  <Text style={[styles.sessionTitle, { color: colors.text }]} numberOfLines={1}>{session.title}</Text>
+                  <Text style={[styles.sessionTime, { color: colors.textSecondary }]}>{new Date(session.timestamp).toLocaleDateString(rtl.isRTL ? 'ar' : 'en')}</Text>
                 </View>
               </View>
             ))}
@@ -210,29 +207,29 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: SPACE.md },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm },
   iconWrapLarge: { width: 48, height: 48, borderRadius: RADIUS.sm, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  headerSubtitle: { color: colors.textSecondary, fontSize: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '700' },
+  headerSubtitle: { fontSize: 12 },
   closeBtn: { padding: 8, borderRadius: RADIUS.sm, backgroundColor: 'rgba(255,255,255,0.05)' },
-  closeText: { color: colors.textSecondary, fontSize: 16, fontWeight: '700' },
-  canvasCard: { backgroundColor: colors.card, borderRadius: RADIUS.card, borderWidth: 1, borderColor: 'rgba(139, 92, 246, 0.25)', padding: SPACE.md },
+  closeText: { fontSize: 16, fontWeight: '700' },
+  canvasCard: { borderRadius: RADIUS.card, borderWidth: 1, padding: SPACE.md },
   canvasHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, marginBottom: SPACE.sm },
-  canvasLabel: { color: colors.accent, fontSize: 14, fontWeight: '600' },
-  canvasInput: { backgroundColor: colors.inputBg, borderRadius: RADIUS.sm, padding: 14, fontSize: 15, color: colors.text, borderWidth: 1, borderColor: colors.border, minHeight: 100 },
-  lastDreamCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: 'rgba(139,92,246,0.08)', borderRadius: RADIUS.sm, padding: SPACE.sm, marginTop: SPACE.sm },
-  lastDreamText: { color: colors.accent, fontSize: 13, flex: 1 },
+  canvasLabel: { fontSize: 14, fontWeight: '600' },
+  canvasInput: { borderRadius: RADIUS.sm, padding: 14, fontSize: 15, borderWidth: 1, minHeight: 100 },
+  lastDreamCard: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.sm, padding: SPACE.sm, marginTop: SPACE.sm },
+  lastDreamText: { fontSize: 13, flex: 1 },
   statsRow: { marginTop: SPACE.sm, alignItems: 'center' },
-  statText: { color: colors.textSecondary, fontSize: 12 },
+  statText: { fontSize: 12 },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm, marginTop: SPACE.md },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderRadius: RADIUS.sm, borderWidth: 1.5 },
   actionLabel: { fontSize: 13, fontWeight: '600' },
-  processingText: { color: colors.accent, fontSize: 13, marginTop: SPACE.sm, fontStyle: 'italic' },
-  responseCard: { backgroundColor: colors.inputBg, borderRadius: RADIUS.sm, padding: SPACE.md, marginTop: SPACE.md, borderWidth: 1, borderColor: colors.border },
-  responseText: { color: colors.text, fontSize: 14, lineHeight: 22 },
+  processingText: { fontSize: 13, marginTop: SPACE.sm, fontStyle: 'italic' },
+  responseCard: { borderRadius: RADIUS.sm, padding: SPACE.md, marginTop: SPACE.md, borderWidth: 1 },
+  responseText: { fontSize: 14, lineHeight: 22 },
   sessionsSection: { marginTop: SPACE.md },
-  sectionTitle: { color: colors.textSecondary, fontSize: 14, fontWeight: '600', marginBottom: SPACE.sm },
-  sessionItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, backgroundColor: colors.card, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: 6 },
+  sectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: SPACE.sm },
+  sessionItem: { flexDirection: 'row', alignItems: 'center', gap: SPACE.sm, borderRadius: RADIUS.sm, padding: SPACE.sm, marginBottom: 6 },
   sessionIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   sessionInfo: { flex: 1 },
-  sessionTitle: { color: colors.text, fontSize: 13, fontWeight: '500' },
-  sessionTime: { color: colors.textSecondary, fontSize: 10 },
+  sessionTitle: { fontSize: 13, fontWeight: '500' },
+  sessionTime: { fontSize: 10 },
 });
