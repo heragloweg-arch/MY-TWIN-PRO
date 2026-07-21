@@ -1,142 +1,60 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing } from 'react-native-reanimated';
-import { usePresence } from '../../hooks/usePresence';
-import { useBreathAnimation } from '../../hooks/useBreathAnimation';
-import { EventBus } from '../../core/EventBus';
-import { SPACE } from '../../../src/design/tokens/spacing';
-import { useRTL } from '../../../lib/useRTL';
-import { Eye } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing } from 'react-native-reanimated';
+import { stateBus } from '../../../src/core/StateBus';
 
-const SILENCE_PHRASES: Record<string, { ar: string[]; en: string[] }> = {
-  thinking: {
-    ar: ['أريد أن أختار كلماتي جيداً...', 'دعني أفكر قليلاً...'],
-    en: ['Let me choose my words carefully...', 'Let me think for a moment...'],
-  },
-  reflecting: {
-    ar: ['أتفكر فيما قلته...', 'لحظة تأمل...'],
-    en: ['Reflecting on what you said...', 'A moment of reflection...'],
-  },
-  silent: {
-    ar: ['أنا هنا. أستمع.', 'خذ وقتك.'],
-    en: ['I am here. Listening.', 'Take your time.'],
-  },
-};
+export default function SilencePresence() {
+  const [isSilent, setIsSilent] = useState(false);
+  const driftX = useSharedValue(0);
+  const driftY = useSharedValue(0);
+  const opacity = useSharedValue(0);
 
-
-  // ✅ حركة العين أثناء الصمت (عدم الكمال)
   useEffect(() => {
     const unsub = stateBus.on('SILENCE_START', () => {
-      // بدء حركة بطيئة للعين
-      driftX.value = withRepeat(withTiming(15, { duration: 3000 }), -1, true);
-      driftY.value = withRepeat(withTiming(10, { duration: 4000 }), -1, true);
+      setIsSilent(true);
+      opacity.value = withTiming(0.6, { duration: 500 });
+      driftX.value = withRepeat(withTiming(15, { duration: 3000, easing: Easing.inOut(Easing.sin) }), -1, true);
+      driftY.value = withRepeat(withTiming(10, { duration: 4000, easing: Easing.inOut(Easing.sin) }), -1, true);
     });
-    return unsub;
+
+    const unsub2 = stateBus.on('SILENCE_END', () => {
+      setIsSilent(false);
+      opacity.value = withTiming(0, { duration: 300 });
+      driftX.value = withTiming(0, { duration: 300 });
+      driftY.value = withTiming(0, { duration: 300 });
+    });
+
+    return () => { unsub(); unsub2(); };
   }, []);
-        
-export default function SilencePresence() {
-  const rtl = useRTL();
-  const presence = usePresence();
-  const breath = useBreathAnimation();
-  const [silenceActive, setSilenceActive] = useState(false);
-  const [phrase, setPhrase] = useState('');
-  const [showPhrase, setShowPhrase] = useState(false);
 
-  const opacity = useSharedValue(0);
-  const avatarBreath = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateX: driftX.value },
+      { translateY: driftY.value },
+    ],
+  }));
 
-  useEffect(() => {
-    const unsub1 = EventBus.on('SILENCE_START', (payload: any) => {
-      setSilenceActive(true);
-      opacity.value = withTiming(1, { duration: 600 });
-
-      const level = payload?.level || 0;
-      const category = level <= 2 ? 'silent' : level <= 4 ? 'reflecting' : 'thinking';
-      const phrases = SILENCE_PHRASES[category] || SILENCE_PHRASES.silent;
-      const langPhrases = rtl.isRTL ? phrases.ar : phrases.en;
-      setPhrase(langPhrases[Math.floor(Math.random() * langPhrases.length)]);
-
-      setTimeout(() => setShowPhrase(true), 2000);
-    });
-
-    const unsub2 = EventBus.on('SILENCE_END', () => {
-      opacity.value = withTiming(0, { duration: 400 });
-      setShowPhrase(false);
-      setTimeout(() => setSilenceActive(false), 400);
-    });
-
-    return () => { unsub1(); unsub2(); };
-  }, [rtl.isRTL]);
-
-  useEffect(() => {
-    if (silenceActive) {
-      avatarBreath.value = withSequence(
-        withTiming(0.92, { duration: 2000 }),
-        withTiming(1, { duration: 2000 }),
-      );
-    }
-  }, [silenceActive]);
-
-  if (!silenceActive) return null;
-
-  const containerStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  if (!isSilent) return null;
 
   return (
-    <Animated.View style={[styles.container, containerStyle]}>
-      <View style={styles.avatarRow}>
-        <Animated.View style={[styles.silentAvatar, { transform: [{ scale: avatarBreath }] }]}>
-          <Eye size={20} stroke="#A78BFA" />
-        </Animated.View>
-        <View style={styles.breathDots}>
-          {[0, 1, 2].map(i => (
-            <View key={i} style={[styles.breathDot, { opacity: breath.phase > i * 0.33 ? 0.6 : 0.2 }]} />
-          ))}
-        </View>
-      </View>
-
-      {showPhrase && (
-        <Text style={styles.phrase}>{phrase}</Text>
-      )}
+    <Animated.View style={[styles.container, animatedStyle]}>
+      <View style={styles.dot} />
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    paddingVertical: SPACE.md,
-    gap: SPACE.sm,
+    position: 'absolute',
+    bottom: 60,
+    alignSelf: 'center',
   },
-  avatarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACE.sm,
-  },
-  silentAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(168, 133, 250, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 133, 250, 0.3)',
-  },
-  breathDots: {
-    flexDirection: 'row',
-    gap: 4,
-  },
-  breathDot: {
-    width: 5,
-    height: 5,
+  dot: {
+    width: 6,
+    height: 6,
     borderRadius: 3,
     backgroundColor: '#A78BFA',
-  },
-  phrase: {
-    color: '#A78BFA',
-    fontSize: 13,
-    fontWeight: '400',
-    fontStyle: 'italic',
-    textAlign: 'center',
+    opacity: 0.5,
   },
 });

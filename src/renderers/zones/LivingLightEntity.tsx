@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Canvas, Circle, Paint, BlurMask, RadialGradient, SweepGradient, Group, vec, Path, Skia } from "@shopify/react-native-skia";
+import { Canvas, Circle, Paint, BlurMask, RadialGradient, SweepGradient, Group, vec } from "@shopify/react-native-skia";
 import { useSharedValue, withTiming, useDerivedValue } from "react-native-reanimated";
 import { stateBus } from '../../../src/core/StateBus';
 import { useAppTheme } from '../../../engine/colors';
@@ -22,72 +22,39 @@ export default function LivingLightEntity({
 }: LivingLightEntityProps) {
   const { colors } = useAppTheme();
   
-  // Shared values for dynamic properties
-  const breathPhase = useSharedValue(0);
-  const attentionX = useSharedValue(0);
-  const attentionY = useSharedValue(0);
-  const driftOffset = useSharedValue(0);
+  const energy = useSharedValue(0.5);
+  const intensity = useSharedValue(0.3);
+  const emotionColor = useSharedValue(colors.accent);
   const memoryEchoRadius = useSharedValue(0);
   const memoryEchoOpacity = useSharedValue(0);
-  const intentHaloColor = useSharedValue('#A855F7');
   const intentHaloIntensity = useSharedValue(0);
-  const emotionColor = useSharedValue(colors.accent);
-  const energyScale = useSharedValue(1.0);
+  const driftOffset = useSharedValue(0);
   const soulCorePulse = useSharedValue(1.0);
+
+  // Derived values للحسابات التي تتطلب number
+  const coreRadius = useDerivedValue(() => 20 * soulCorePulse.value, [soulCorePulse]);
+  const coreX = useDerivedValue(() => 110 + driftOffset.value * 15, [driftOffset]);
+  const coreY = useDerivedValue(() => 110 - driftOffset.value * 10, [driftOffset]);
 
   useEffect(() => {
     const unsubscribe = stateBus.on('presence:state_updated', (_: string, data: any) => {
-      const p = data as import('../../../engine/presence/PresenceEngine').PresenceState;
-      if (!p) return;
+      if (!data) return;
 
-      // Base emotion color
-      emotionColor.value = withTiming(p.halo_color || colors.accent, { duration: 300 });
+      emotionColor.value = withTiming(data.halo_color || colors.accent, { duration: 300 });
+      energy.value = withTiming(data.energy || 0.5, { duration: 300 });
+      intensity.value = withTiming(data.intensity || 0.3, { duration: 300 });
+      driftOffset.value = withTiming(data.consciousnessDrift || 0, { duration: 200 });
+      soulCorePulse.value = withTiming(0.7 + (data.intensity || 0.5) * 0.3, { duration: 300 });
 
-      // Attention direction
-      if (p.attentionDirection === 'user') {
-        attentionX.value = withTiming(0.1, { duration: 400 });
-        attentionY.value = withTiming(-0.1, { duration: 400 });
-      } else if (p.attentionDirection === 'memory') {
-        attentionX.value = withTiming(-0.1, { duration: 600 });
-        attentionY.value = withTiming(0, { duration: 600 });
-      } else if (p.attentionDirection === 'internal') {
-        attentionX.value = withTiming(0, { duration: 500 });
-        attentionY.value = withTiming(0, { duration: 500 });
-      } else {
-        attentionX.value = withTiming(0, { duration: 2000 });
-        attentionY.value = withTiming(0, { duration: 2000 });
-      }
-
-      // Breath phase (0-1 oscillating)
-      const breathSpeed = 4000 - (p.energy || 0.5) * 2000;
-      breathPhase.value = withTiming(Math.sin(Date.now() / breathSpeed) * 0.5 + 0.5, { duration: 100 });
-
-      // Consciousness drift
-      driftOffset.value = withTiming(p.consciousnessDrift || 0, { duration: 200 });
-
-      // Memory echo
-      if (p.memoryEchoIntensity > 0.01) {
-        memoryEchoRadius.value = withTiming(60 * p.memoryEchoIntensity, { duration: 300 });
-        memoryEchoOpacity.value = withTiming(p.memoryEchoIntensity * 0.3, { duration: 300 });
+      if (data.memoryEchoIntensity > 0.01) {
+        memoryEchoRadius.value = withTiming(60 * data.memoryEchoIntensity, { duration: 300 });
+        memoryEchoOpacity.value = withTiming(data.memoryEchoIntensity * 0.3, { duration: 300 });
       } else {
         memoryEchoRadius.value = withTiming(0, { duration: 800 });
         memoryEchoOpacity.value = withTiming(0, { duration: 800 });
       }
 
-      // Intent field
-      if (p.intentField) {
-        intentHaloColor.value = withTiming(p.intentField.color, { duration: 400 });
-        intentHaloIntensity.value = withTiming(p.intentField.intensity, { duration: 400 });
-      } else {
-        intentHaloIntensity.value = withTiming(0, { duration: 600 });
-      }
-
-      // Energy scale
-      energyScale.value = withTiming(0.9 + (p.energy || 0.5) * 0.2, { duration: 300 });
-
-      // Soul core pulse (heartbeat)
-      const heartRate = 60 + (p.energy || 0.5) * 40;
-      soulCorePulse.value = withTiming(Math.sin(Date.now() / (60000 / heartRate)) * 0.3 + 0.7, { duration: 100 });
+      intentHaloIntensity.value = data.intentField ? withTiming(data.intentField.intensity, { duration: 400 }) : withTiming(0, { duration: 600 });
     });
 
     return () => unsubscribe();
@@ -99,52 +66,52 @@ export default function LivingLightEntity({
   return (
     <View style={styles.container}>
       <Canvas style={{ width: SIZE, height: SIZE }}>
-        <Group transform={[{ translateX: attentionX }, { translateY: attentionY }]}>
-          {/* 1. Attention Field - هالة الاتجاه */}
-          <Circle cx={CENTER} cy={CENTER} r={90} opacity={useDerivedValue(() => attentionX.value !== 0 ? 0.1 : 0.02, [attentionX])}>
+        <Group>
+          {/* 1. Attention Field */}
+          <Circle cx={CENTER} cy={CENTER} r={90} opacity={0.08}>
             <Paint><BlurMask blur={40} style="normal" /></Paint>
-            <RadialGradient c={vec(CENTER, CENTER)} r={90} colors={[emotionColor.value + '30', 'transparent']} />
+            <RadialGradient c={vec(CENTER, CENTER)} r={90} colors={['#A855F7', 'transparent']} />
           </Circle>
 
-          {/* 2. Volumetric Aura - هالة حجمية */}
-          <Circle cx={CENTER} cy={CENTER} r={70 * energyScale.value} opacity={0.15}>
+          {/* 2. Volumetric Aura */}
+          <Circle cx={CENTER} cy={CENTER} r={70} opacity={intensity}>
             <Paint><BlurMask blur={30} style="normal" /></Paint>
-            <RadialGradient c={vec(CENTER, CENTER)} r={70} colors={[emotionColor.value + '40', 'transparent']} />
+            <RadialGradient c={vec(CENTER, CENTER)} r={70} colors={['#A855F7', 'transparent']} />
           </Circle>
 
-          {/* 3. Organic Waves - موجات عضوية */}
+          {/* 3. Organic Waves */}
           <Circle cx={CENTER} cy={CENTER} r={55} opacity={0.2}>
             <Paint><BlurMask blur={15} style="inner" /></Paint>
-            <SweepGradient c={vec(CENTER, CENTER)} colors={[emotionColor.value, colors.accent + '80', emotionColor.value]} />
+            <SweepGradient c={vec(CENTER, CENTER)} colors={['#A855F7', '#C084FC', '#A855F7']} />
           </Circle>
 
-          {/* 4. Memory Echo Layer - طبقة ذاكرة */}
+          {/* 4. Memory Echo Layer */}
           <Circle cx={CENTER} cy={CENTER} r={memoryEchoRadius} opacity={memoryEchoOpacity}>
             <Paint style="stroke" strokeWidth={2} /><BlurMask blur={10} style="normal" />
             <RadialGradient c={vec(CENTER, CENTER)} r={60} colors={['#FFFFFF30', 'transparent']} />
           </Circle>
 
-          {/* 5. Fluid Membrane - غشاء مائع */}
-          <Circle cx={CENTER} cy={CENTER} r={45 + driftOffset.value * 10} opacity={0.25}>
+          {/* 5. Fluid Membrane */}
+          <Circle cx={CENTER} cy={CENTER} r={45} opacity={0.25}>
             <Paint style="stroke" strokeWidth={1.5} /><BlurMask blur={8} style="solid" />
-            <SweepGradient c={vec(CENTER, CENTER)} colors={[emotionColor.value, '#FFFFFF20', emotionColor.value]} />
+            <SweepGradient c={vec(CENTER, CENTER)} colors={['#A855F7', '#FFFFFF20', '#A855F7']} />
           </Circle>
 
-          {/* 6. Energy Streams - خيوط طاقة */}
-          <Circle cx={CENTER} cy={CENTER} r={35} opacity={energyScale}>
+          {/* 6. Energy Streams */}
+          <Circle cx={CENTER} cy={CENTER} r={35} opacity={energy}>
             <Paint><BlurMask blur={6} style="inner" /></Paint>
-            <SweepGradient c={vec(CENTER, CENTER)} colors={['#FFFFFF40', emotionColor.value + '60', '#FFFFFF40']} />
+            <SweepGradient c={vec(CENTER, CENTER)} colors={['#FFFFFF40', '#A855F7', '#FFFFFF40']} />
           </Circle>
 
-          {/* 7. Soul Core + Consciousness Drift - نواة الروح */}
-          <Circle cx={CENTER + driftOffset.value * 15} cy={CENTER - driftOffset.value * 10} r={20 * soulCorePulse} color={emotionColor}>
+          {/* 7. Soul Core + Consciousness Drift */}
+          <Circle cx={coreX} cy={coreY} r={coreRadius} color="#A855F7">
             <Paint><BlurMask blur={5} style="solid" /></Paint>
           </Circle>
 
-          {/* 8. Intent Field - مجال النية */}
+          {/* 8. Intent Field */}
           <Circle cx={CENTER} cy={CENTER} r={80} opacity={intentHaloIntensity}>
             <Paint style="stroke" strokeWidth={2} /><BlurMask blur={20} style="normal" />
-            <RadialGradient c={vec(CENTER, CENTER)} r={80} colors={[intentHaloColor.value + '50', 'transparent']} />
+            <RadialGradient c={vec(CENTER, CENTER)} r={80} colors={['#A855F7', 'transparent']} />
           </Circle>
         </Group>
       </Canvas>
