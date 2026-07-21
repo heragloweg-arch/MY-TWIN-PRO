@@ -101,6 +101,20 @@ export default function LivingWorld() {
     return unsub;
   }, [colors.accent]);
 
+  
+  // ✅ الذكاء غير المرئي: الانتقال اللحظي للعالم
+  useEffect(() => {
+    const unsub = EventBus.on('INVISIBLE_TRANSITION', (payload: any) => {
+      if (payload?.capability) {
+        try {
+          capabilityOrchestrator.activateChain([payload.capability]);
+        } catch (e) {}
+      }
+    });
+    return unsub;
+  }, []);
+    
+
   const handleBirthComplete = useCallback(() => { setBirthComplete(true); }, []);
   useEffect(() => { if (birthComplete) setShowGreeting(true); }, [birthComplete]);
   const handleGreetingComplete = useCallback(() => setGreetingDone(true), []);
@@ -235,6 +249,8 @@ export default function LivingWorld() {
                 onChangeText={(text) => {
                   setInputText(text);
                   setIsWriting(text.length > 0);
+                  if (text.length === 1) EventBus.emit('USER_START_TYPING');
+                  if (text.length === 0) EventBus.emit('USER_STOP_TYPING');
                   if (text.length === 1) perceptionEngine.registerTypingStart();
                   perceptionEngine.registerKeystroke(text.length);
                 }}

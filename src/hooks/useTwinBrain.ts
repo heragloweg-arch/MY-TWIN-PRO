@@ -136,6 +136,15 @@ export function useTwinBrain(initialUserId: string = '', initialLang: string = '
       }
 
       EventBus.emit('AI_FINISH_THINKING', { response: reply, confidence: 0.9 });
+      // ✅ التحقق من وجود سؤال فضولي استباقي من الخلفية
+      if (response.curiosity_question) {
+        EventBus.emit('TWIN_SPEAK', {
+          phrase: response.curiosity_question,
+          tone: 'gentle',
+          type: 'curiosity'
+        });
+      }
+    
     } catch (error) {
       EventBus.emit('AI_FINISH_THINKING', { response: '', confidence: 0 });
     } finally {

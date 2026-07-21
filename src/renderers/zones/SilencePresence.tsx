@@ -23,6 +23,17 @@ const SILENCE_PHRASES: Record<string, { ar: string[]; en: string[] }> = {
   },
 };
 
+
+  // ✅ حركة العين أثناء الصمت (عدم الكمال)
+  useEffect(() => {
+    const unsub = stateBus.on('SILENCE_START', () => {
+      // بدء حركة بطيئة للعين
+      driftX.value = withRepeat(withTiming(15, { duration: 3000 }), -1, true);
+      driftY.value = withRepeat(withTiming(10, { duration: 4000 }), -1, true);
+    });
+    return unsub;
+  }, []);
+        
 export default function SilencePresence() {
   const rtl = useRTL();
   const presence = usePresence();

@@ -147,6 +147,14 @@ class UnifiedTwinBrain:
         )
         
         # ═══════════════════════════════
+        
+        # Bidirectional influence: low energy slows thinking
+        if perception.get("user_state") == "tired":
+            timing["reason_ms"] = int(timing["reason_ms"] * 1.5)
+            timing["respond_ms"] = int(timing["respond_ms"] * 1.3)
+            presence_state["voice_tone"] = "soft"
+            presence_state["energy"] = max(0.3, presence_state.get("energy", 0.7) - 0.2)
+    
         # 10. توليد الرد
         # ═══════════════════════════════
         strategy = {

@@ -1,4 +1,5 @@
 import { useTwinCoreStore } from '../store/useTwinCoreStore';
+import { Appearance } from 'react-native';
 
 export interface ThemeColors {
   bg: string;
@@ -22,6 +23,7 @@ export interface ThemeColors {
   white: string;
   glass: string;
 }
+
 export const FONTS = {
   arabicBold: 'Tajawal_700Bold',
   arabicMedium: 'Tajawal_500Medium',
@@ -31,7 +33,6 @@ export const FONTS = {
 };
 
 export const SPACING = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
-
 
 export const DARK_THEME: ThemeColors = {
   bg: '#120B1E',
@@ -79,28 +80,15 @@ export const LIGHT_THEME: ThemeColors = {
   glass: 'rgba(255, 255, 255, 0.7)',
 };
 
-
-export const FONTS = {
-  arabicBold: 'Tajawal_700Bold',
-  arabicMedium: 'Tajawal_500Medium',
-  arabicRegular: 'Tajawal_400Regular',
-  ai: 'Orbitron_700Bold',
-  sizes: { title: 28, subtitle: 18, body: 16, small: 14, tiny: 12 },
-};
-
-export const SPACING = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
-
-/**
- * هوك الألوان الرئيسي — يقرأ الوضع من المتجر
- */
 export function useColors(): ThemeColors {
   const theme = useTwinCoreStore((s) => s.theme);
   return theme === 'dark' ? DARK_THEME : LIGHT_THEME;
 }
 
-/**
- * هوك موحد يُرجع الألوان + isDark
- */
+export function getColors(isDark: boolean): ThemeColors {
+  return isDark ? DARK_THEME : LIGHT_THEME;
+}
+
 export function useAppTheme() {
   const theme = useTwinCoreStore((s) => s.theme);
   const isDark = theme === 'dark';
@@ -108,12 +96,12 @@ export function useAppTheme() {
   return { colors, isDark };
 }
 
-/**
- * مزامنة وضع النظام عند البداية (تُستدعى مرة واحدة)
- */
 export function syncInitialTheme() {
   const store = useTwinCoreStore.getState();
   if (!store.themeManuallySet) {
-    store.syncSystemTheme();
+    const systemTheme = Appearance.getColorScheme();
+    if (systemTheme) {
+      store.syncSystemTheme?.();
+    }
   }
 }

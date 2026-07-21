@@ -18,12 +18,7 @@ export interface WorkspaceState { active: string | null; previous: string | null
 export interface RelationshipState { bondLevel: number; attachmentStyle: string; trustScore: number; firstContactTimestamp: number | null; }
 
 export interface Message {
-  id: string;
-  sender: 'user' | 'twin';
-  text: string;
-  timestamp: number;
-  confidence?: number;
-  source?: 'memory' | 'inference' | 'knowledge' | 'unknown';
+  id: string; sender: 'user' | 'twin'; text: string; timestamp: number; confidence?: number; source?: 'memory' | 'inference' | 'knowledge' | 'unknown';
 }
 
 export interface TwinState {
@@ -32,6 +27,7 @@ export interface TwinState {
   breath: BreathState; avatar: AvatarState; emotion: EmotionalState; spaceEnergy: SpaceEnergy; silenceLevel: number;
   conversation: ConversationState; memory: MemoryState; workspace: WorkspaceState; relationship: RelationshipState;
   isOnline: boolean; isDegraded: boolean; uptime: number;
+  personalityDNA: Record<string, number>; // ✅ DNA للشخصية
 }
 
 export const STATE_EVENTS = {
@@ -53,6 +49,7 @@ const DEFAULT_STATE: TwinState = {
   workspace: { active: null, previous: null, isTransforming: false, transformProgress: 0, spatialMemory: {} },
   relationship: { bondLevel: 0, attachmentStyle: 'unknown', trustScore: 0.5, firstContactTimestamp: null },
   isOnline: true, isDegraded: false, uptime: 0,
+  personalityDNA: { empathy: 0.85, curiosity: 0.8, humor: 0.5, initiative: 0.6, reflection: 0.9, logic: 0.75, creativity: 0.8, calmness: 0.85 },
 };
 
 type StateSubscriber = (state: TwinState, prevState: TwinState) => void;
@@ -67,9 +64,7 @@ export class StateBusClass {
 
   getState(): Readonly<TwinState> { return this.state; }
 
-  update(partial: Partial<TwinState>): void {
-    this.applyUpdate(partial);
-  }
+  update(partial: Partial<TwinState>): void { this.applyUpdate(partial); }
 
   private applyUpdate(partial: Partial<TwinState>) {
     this.prevState = { ...this.state };
@@ -106,66 +101,45 @@ export class StateBusClass {
     if (arr) arr.forEach(cb => { try { cb(event, data); } catch (e) { console.warn(`[StateBus] Error: ${event}`, e); } });
   }
 
-  // ✅ الجديد: تحديث الحالة من UnifiedResponse
   updateFromUnifiedResponse(response: any): void {
     if (!response) return;
     const p = response.presence_state || {};
     const e = response.twin_emotional_state || {};
-    const b = response.behavior || {};
     const r = response.twin_state_update?.relationship || {};
     const m = response.memory_surfaced;
+    const dna = response.twin_state_update?.personality_dna || {};
 
     this.applyUpdate({
       emotion: {
         primaryEmotion: p.emotion || e.current_emotion || 'neutral',
         intensity: p.intensity || e.intensity || 0.5,
         valence: (e.intensity > 0.5 || p.emotion === 'joy') ? 'positive' : (p.emotion === 'sadness' || p.emotion === 'fear' ? 'negative' : 'neutral'),
-        confidence: e.confidence || 0.7,
-        duration: 0,
-        trend: 'stable',
+        confidence: e.confidence || 0.7, duration: 0, trend: 'stable',
       },
-      relationship: {
-        bondLevel: r.bond_level || 0,
-        attachmentStyle: 'secure',
-        trustScore: (r.trust || 50) / 100,
-        firstContactTimestamp: null,
-      },
-      memory: {
-        lastSurfacedId: m?.id || null,
-        pendingSurfacing: false,
-        recentContext: m?.content || null,
-      },
+      relationship: { bondLevel: r.bond_level || 0, attachmentStyle: 'secure', trustScore: (r.trust || 50) / 100, firstContactTimestamp: null },
+      memory: { lastSurfacedId: m?.id || null, pendingSurfacing: false, recentContext: m?.content || null },
       spaceEnergy: p.emotion === 'joy' ? 'energetic' : p.emotion === 'sadness' ? 'serene' : p.emotion === 'fear' ? 'tense' : 'tranquil',
       interfaceState: 'twin',
       presenceLevel: Math.round(p.intensity * 5) as any,
+      personalityDNA: { ...this.state.personalityDNA, ...dna },
     });
 
-    // إرسال presence:state_updated ليغذي LivingLightEntity
     this.emitEvent('presence:state_updated', {
-      breathRate: p.breath_rate || 12,
-      breathDepth: p.intensity || 0.5,
-      heartRate: 60 + (p.energy || 0.7) * 40,
-      heartVariability: 0.5,
-      haloRadius: 50 + (p.warmth || 0.5) * 30,
-      haloIntensity: p.intensity || 0.5,
-      haloColorShift: 0,
-      particleCount: Math.round((p.energy || 0.7) * 100),
-      particleVelocity: p.energy || 0.7,
-      particleSpread: 0.5,
-      focusLevel: p.emotion === 'focused' ? 0.9 : 0.5,
-      eyeTracking: true,
-      eyeBlinkRate: 4,
-      energyLevel: p.energy || 0.7,
+      emotion: p.emotion || 'neutral',
+      intensity: p.intensity || 0.5,
+      energy: p.energy || 0.7,
       warmth: p.warmth || 0.7,
-      stability: 0.8,
-      voicePitch: 0.5,
-      voiceSpeed: p.voice_tone === 'soft' ? 0.4 : 0.6,
-      voiceWarmth: p.warmth || 0.7,
-      movementFluidity: 0.5,
-      socialDistance: 0.3,
-      glowIntensity: p.intensity || 0.5,
-      breathDuration: p.breath_rate || 12,
-      attentionLevel: Math.round((p.energy || 0.7) * 100),
+      halo_color: p.halo_color || '#A855F7',
+      breath_rate: p.breath_rate || 12,
+      voice_tone: p.voice_tone || 'neutral',
+      silence_before_speaking_ms: p.silence_before_speaking_ms || 0,
+      focus_level: p.emotion === 'focused' ? 0.9 : 0.5,
+      is_speaking: false,
+      is_thinking: false,
+      attentionDirection: 'user' as const,
+      consciousnessDrift: 0,
+      memoryEchoIntensity: 0,
+      intentField: null as any,
     });
   }
 
